@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: oidc-env
-  namespace: cybertwin
+  namespace: CCNN
 data:
   # ---------- OIDC 提供者配置 ----------
   OIDC_CONFIG: >-

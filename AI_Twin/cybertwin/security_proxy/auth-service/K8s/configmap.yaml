@@ -113,4 +113,26 @@ metadata:
   namespace: cybertwin
 data:
   trust_score_add_value: "0.1"  # 可根据需要调整，比如0.05、0.2等
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: imsi-whitelist-config
+  namespace: cybertwin
+data:
+  whitelist: |-
+    466920000000001
+    466920000000002
+    466920000000003
 
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: mac-whitelist-config
+  namespace: cybertwin
+data:
+  whitelist: |-
+    70:C9:4E:E2:FF:1B
+    48:7E:25:07:12:EA
+    94:B6:09:21:49:9A

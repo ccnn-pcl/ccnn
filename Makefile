@@ -24,7 +24,7 @@ help:
 	@echo "Root Makefile - available commands:"
 	@echo "  make all                - build all services (use -j for parallel, e.g. make -j4 all)"
 	@echo "  make frontend-docker    - build frontend docker image (runs 'docker-image')"
-	@echo "  make agent-docker       - build ai_twin/agent (runs 'build')"
+	@echo "  make agent-docker       - build AI_Twin/agent (runs 'build')"
 	@echo "  make data_proxy-docker  - build data_proxy docker image (runs 'docker-build')"
 	@echo "  make security-docker    - build all security_proxy images (runs 'build-all')"
 	@echo "  make internal-agent-docker - build internal_agent docker image (runs 'docker-build')"
@@ -77,7 +77,7 @@ frontend-docker:
 	$(MAKE) -C frontend docker-image VERSION=$(VERSION)
 
 agent-docker:
-	$(MAKE) -C ai_twin/agent build \
+	$(MAKE) -C AI_Twin/agent build \
 		VERSION=$(VERSION) \
 		BUILD=$(GIT_COMMIT) \
 		BUILD_DATE=$(BUILD_DATE) \
@@ -85,14 +85,14 @@ agent-docker:
 		GIT_COMMIT=$(GIT_COMMIT)
 
 data_proxy-docker:
-	$(MAKE) -C ai_twin/cybertwin/data_proxy docker-build \
+	$(MAKE) -C AI_Twin/cybertwin/data_proxy docker-build \
 		BUILD_VERSION=$(VERSION) \
 		GIT_COMMIT=$(GIT_COMMIT) \
 		GIT_BRANCH=$(GIT_BRANCH) \
 		BUILD_TIME=$(BUILD_DATE)
 
 security-docker:
-	$(MAKE) -C ai_twin/cybertwin/security_proxy build-all VERSION=$(VERSION)
+	$(MAKE) -C AI_Twin/cybertwin/security_proxy build-all VERSION=$(VERSION)
 
 internal-agent-docker:
 	$(MAKE) -C app_examples/intelligent_doctor/internal_agent docker-build \

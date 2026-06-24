@@ -68,6 +68,11 @@ CYBERTWIN-SECURITY-ALL/
 
 所有模块均在自身根目录执行构建命令，镜像命名遵循「模块名:v1.0」规范（可自行修改版本号），构建完成后可推送至私有镜像仓库，方便K8s集群拉取。
 
+0. 基础py312镜像构建
+```
+# 构建基础镜像
+docker build -t py312-base:3.12-slim -f Dockerfile.py312-base .
+```
 1. auth-service 镜像构建
 ```
 # 进入auth-service核心代码目录

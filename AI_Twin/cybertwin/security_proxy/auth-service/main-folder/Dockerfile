@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libc6-dev \
     && rm -rf /var/lib/apt/lists/*
+    
+# ========== 采用你说的标准容器安全创建用户方式 ==========
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # 复制依赖清单并安装（使用国内镜像源，避免哈希问题）
 COPY requirements.txt .
@@ -22,6 +25,12 @@ RUN pip install --no-cache-dir --upgrade pip -i https://mirrors.aliyun.com/pypi/
 
 # 复制微服务代码
 COPY main.py .
+
+# 关键：把工作目录归属改成 appuser，否则切换用户后读文件权限拒绝
+RUN chown -R appuser:appuser /app
+
+# 切换非root运行
+USER appuser
 
 # 暴露端口（与uvicorn一致）
 EXPOSE 8000

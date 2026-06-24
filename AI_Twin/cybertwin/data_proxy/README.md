@@ -414,3 +414,12 @@ tail -f logs/app.log
 docker logs <container_id>
 ```
 
+## 许可证
+
+版权所有 © 2024 Cybertwin DataProxy Service
+
+## 相关文档
+
+- [USAGE.md](./USAGE.md) - 详细使用指南
+- [README-MAKEFILE.md](./README-MAKEFILE.md) - Makefile 说明
+- [VERSIONING_SUMMARY.md](./VERSIONING_SUMMARY.md) - 版本管理总结

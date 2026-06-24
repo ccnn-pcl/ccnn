@@ -1,5 +1,5 @@
 # 基础镜像：选择Python 3.11（与训练环境兼容的版本），slim版本体积更小
-FROM python:3.12-slim
+FROM py312-base:3.12-slim
 
 # 设置工作目录（容器内的工作路径）
 WORKDIR /app

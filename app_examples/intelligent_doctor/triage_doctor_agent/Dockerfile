@@ -46,6 +46,15 @@ RUN pip install --no-cache-dir --upgrade pip -i  https://mirrors.aliyun.com/pypi
 # 复制应用代码
 COPY . .
 
+# 【方案 A】版本注入在镜像构建阶段完成，不在宿主机执行 inject_version.py
+# 原因：若在 make docker-build 前注入，会改写 backend/version.py，污染 Git 工作区
+# 做法：COPY 后重新声明 ARG（Docker 要求 COPY 之后才能使用构建参数），在容器内生成 version.py
+# 版本来源：make docker-build 通过 --build-arg 传入 BUILD_VERSION / GIT_COMMIT / BUILD_TIME
+ARG BUILD_VERSION
+ARG GIT_COMMIT
+ARG BUILD_TIME
+RUN python scripts/inject_version.py "${BUILD_VERSION}" "${GIT_COMMIT}" "${BUILD_TIME}"
+
 # 创建数据目录
 RUN mkdir -p /app/data && \
     chmod -R 755 /app/data

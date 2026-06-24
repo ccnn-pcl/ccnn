@@ -1,9 +1,9 @@
-# Build stage
 FROM golang:1.23.0-alpine AS builder
 
-# 安装动态编译依赖
-# 安装动态编译依赖（Alpine 下编译 CGO 需 gcc/musl-dev）
-RUN echo -e "https://mirrors.aliyun.com/alpine/v3.20/main\nhttps://mirrors.aliyun.com/alpine/v3.20/community" > /etc/apk/repositories && \
+ARG ALPINE_REPOSITORIES="https://dl-cdn.alpinelinux.org/alpine/v3.20/main https://dl-cdn.alpinelinux.org/alpine/v3.20/community"
+RUN if [ -n "$ALPINE_REPOSITORIES" ]; then \
+        printf "%s\n" $ALPINE_REPOSITORIES > /etc/apk/repositories; \
+    fi && \
     apk update && \
     apk add --no-cache \
     gcc \
@@ -11,43 +11,42 @@ RUN echo -e "https://mirrors.aliyun.com/alpine/v3.20/main\nhttps://mirrors.aliyu
     musl-utils \
     libc6-compat
 
-# 版本信息
-ARG BUILD_VERSION=0.1.5
+ARG VERSION=0.0.1
 ARG GIT_COMMIT=unknown
 ARG GIT_BRANCH=unknown
 ARG BUILD_TIME=unknown
+ARG GOPROXY
 
 WORKDIR /app
 
-ENV GOPROXY=https://mirrors.aliyun.com/goproxy/,direct
+ENV GOPROXY=${GOPROXY:-https://mirrors.aliyun.com/goproxy/,direct}
 COPY go.mod go.sum ./
-#RUN go mod download
 
 COPY . .
 
-# 构建时注入版本信息
 RUN CGO_ENABLED=1 GOOS=linux go build \
-    -ldflags="-X git.pcl.ac.cn/CN/Cybertwin-DataProxy/config.Version=${BUILD_VERSION} \
-    -X git.pcl.ac.cn/CN/Cybertwin-DataProxy/config.Commit=${GIT_COMMIT} \
-    -X git.pcl.ac.cn/CN/Cybertwin-DataProxy/config.Branch=${GIT_BRANCH} \
-    -X git.pcl.ac.cn/CN/Cybertwin-DataProxy/config.BuildTime=${BUILD_TIME}" \
+    -ldflags="-X github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/config.Version=${VERSION} \
+    -X github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/config.Commit=${GIT_COMMIT} \
+    -X github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/config.Branch=${GIT_BRANCH} \
+    -X github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/config.BuildTime=${BUILD_TIME}" \
     -o /app/server .
 
-# Final stage
 FROM alpine:latest
 
 WORKDIR /app
 
-# 复制二进制文件
 COPY --from=builder /app/server .
-# 复制配置文件
 COPY conf/ ./conf/
 
-# 创建日志目录
 RUN mkdir -p /app/logs && chmod 755 /app/logs
+
+RUN echo "dataproxy:x:10001:10001:dataproxy:/app:/sbin/nologin" >> /etc/passwd && \
+    echo "dataproxy:x:10001:" >> /etc/group && \
+    chown -R 10001:10001 /app
+
+USER dataproxy
 
 EXPOSE 8080
 
-# 支持命令行参数
 ENTRYPOINT ["/app/server"]
 CMD [""]

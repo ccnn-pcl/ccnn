@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"time"
 
-	"git.pcl.ac.cn/CN/Cybertwin-DataProxy/config"
-	l "git.pcl.ac.cn/CN/Cybertwin-DataProxy/logger"
+	"github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/config"
+	l "github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/logger"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"

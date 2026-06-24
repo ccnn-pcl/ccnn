@@ -1,4 +1,4 @@
-module git.pcl.ac.cn/CN/Cybertwin-DataProxy
+module github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy
 
 go 1.23.0
 

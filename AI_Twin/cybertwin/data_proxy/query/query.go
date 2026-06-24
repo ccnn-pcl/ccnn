@@ -16,7 +16,7 @@
 package query
 
 import (
-	"git.pcl.ac.cn/CN/Cybertwin-DataProxy/db"
+	"github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/db"
 	"gorm.io/gorm"
 )
 

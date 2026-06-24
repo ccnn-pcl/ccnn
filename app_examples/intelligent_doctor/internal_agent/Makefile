@@ -1,10 +1,11 @@
-.PHONY: help install build docker-build docker-clean clean run test dev-run docker-run lint format _version_inject
+.PHONY: help install build docker-build docker-clean clean run test dev-run docker-run lint format
 
 # project config
 PROJECT_NAME := internal-agent
 PYTHON := python3
 PYTHON_VERSION := $(shell $(PYTHON) --version 2>/dev/null | cut -d' ' -f2 | cut -d'.' -f1,2)
 IMAGE_NAME := $(PROJECT_NAME)
+PIP_INDEX_URL ?= https://mirrors.aliyun.com/pypi/simple/
 
 # version
 VERSION_FILE := src/version.py
@@ -61,14 +62,6 @@ install: ## Install dependencies
 # Version management & injection
 # ============================================================================
 
-_version_inject:
-	@echo "$(BLUE)Injecting version info...$(NC)"
-	@mkdir -p $$(dirname $(VERSION_FILE))
-	@scripts/inject_version.sh "$(VERSION)" "$(GIT_COMMIT)" "$(BUILD_DATE)" "$(VERSION_FILE)"
-	@echo "$(GREEN)✓ Version info injected: $(VERSION_FILE)$(NC)"
-	@echo "  Version: $(GREEN)$(VERSION)$(NC)"
-	@echo "  Commit: $(GREEN)$(GIT_COMMIT)$(NC)"
-
 version: ## Show version info
 	@echo "$(BLUE)Version info:$(NC)"
 	@echo "  Project version: $(GREEN)$(VERSION)$(NC)"
@@ -79,7 +72,7 @@ version: ## Show version info
 # Build
 # ============================================================================
 
-build: _version_inject ## Build project
+build: ## Build project
 	@echo "$(BLUE)Building project...$(NC)"
 	$(PYTHON) -m py_compile src/main.py
 	@echo "$(GREEN)✓ Project built$(NC)"
@@ -88,11 +81,11 @@ build: _version_inject ## Build project
 # Docker build
 # ============================================================================
 
-docker-build: _version_inject ## Build Docker image
+docker-build: ## Build Docker image (override: PIP_INDEX_URL=https://pypi.org/simple/)
 	@echo "$(BLUE)Building Docker image: $(IMAGE_NAME):$(DOCKER_TAG)$(NC)"
 	docker build \
+		--build-arg PIP_INDEX_URL=$(PIP_INDEX_URL) \
 		-t $(IMAGE_NAME):$(DOCKER_TAG) \
-		-t $(IMAGE_NAME):$(VERSION) \
 		.
 	@echo "$(GREEN)✓ Docker image built$(NC)"
 	@echo "  Image: $(GREEN)$(IMAGE_NAME):$(DOCKER_TAG)$(NC)"

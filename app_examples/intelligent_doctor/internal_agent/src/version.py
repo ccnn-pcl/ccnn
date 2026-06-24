@@ -5,9 +5,9 @@ Version information module
 Automatic version information file injected during build.
 """
 
-__version__ = "4102c28"
-__git_commit__ = "4102c28"
-__build_date__ = "2026-06-24T09:54:09Z"
+__version__ = "eb183af"
+__git_commit__ = "eb183af"
+__build_date__ = "2026-06-24T11:06:35Z"
 VERSION_STRING = f"{__version__}+{__git_commit__}"
 
 VERSION_INFO = {

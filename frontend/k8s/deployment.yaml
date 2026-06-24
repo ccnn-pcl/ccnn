@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: CCNN-frontend
+  namespace: CCNN
+  labels:
+    app: CCNN-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: CCNN-frontend
+  template:
+    metadata:
+      labels:
+        app: CCNN-frontend
+    spec:
+      containers:
+        - name: CCNN-frontend
+          image: CCNN/CCNN-frontend:latest
+          imagePullPolicy: Always
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 500m
+              memory: 512Mi
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: nginx.conf
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: CCNN-frontend-nginx-config
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600

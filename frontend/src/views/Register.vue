@@ -21,7 +21,19 @@
               v-model="password" 
               type="password" 
               class="form-control"
-              placeholder="设置您的密码"
+              placeholder="设置您的密码（至少6位）"
+              required
+              :disabled="isSubmitting"
+            >
+          </label>
+        </div>
+        <div class="form-group">
+          <label><i class="fas fa-lock"></i> 确认密码：
+            <input 
+              v-model="confirmPassword" 
+              type="password" 
+              class="form-control"
+              placeholder="再次输入密码"
               required
               :disabled="isSubmitting"
             >
@@ -98,7 +110,7 @@
       </div>
     
       <div class="login-link">
-        已有账号? <router-link to="/login">立即登录</router-link>
+        已有账号? <router-link to="/ctlogin">立即登录</router-link>
       </div>
     </div>      
   </div>
@@ -115,6 +127,7 @@ export default {
   setup() {
     const username = ref('');
     const password = ref('');
+    const confirmPassword = ref('');
     const email = ref('');
     const faceData = ref(null);
     const previewImage = ref(null);
@@ -128,8 +141,32 @@ export default {
     const faceCamera = ref(null);
 
     const canSubmit = computed(() => {
-      return username.value && password.value && faceData.value;
+      return username.value && password.value && confirmPassword.value && faceData.value;
     });
+
+    // 用户名校验
+    const validateUsername = () => {
+      if (!username.value) return '用户名不能为空';
+      if (username.value.length < 2) return '用户名至少2个字符';
+      if (username.value.length > 20) return '用户名不能超过20个字符';
+      if (/[^a-zA-Z0-9_\u4e00-\u9fa5]/.test(username.value)) return '用户名只能包含中文、字母、数字和下划线';
+      return null;
+    };
+
+    // 密码校验
+    const validatePassword = () => {
+      if (!password.value) return '密码不能为空';
+      if (password.value.length < 6) return '密码至少6位';
+      if (password.value.length > 32) return '密码不能超过32位';
+      return null;
+    };
+
+    // 确认密码校验
+    const validateConfirmPassword = () => {
+      if (!confirmPassword.value) return '请再次输入密码';
+      if (password.value !== confirmPassword.value) return '两次密码输入不一致';
+      return null;
+    };
 
     const statusIcon = computed(() => {
       return {
@@ -175,21 +212,22 @@ export default {
       return null;
     };
     const handleSubmit = async () => {
-      const emailError = validateEmail();
-      if (emailError) {
-        message.value = emailError;
+      // 逐项校验
+      const errors = [
+        validateUsername(),
+        validatePassword(),
+        validateConfirmPassword(),
+        validateEmail(),
+      ].filter(Boolean)
+
+      if (errors.length > 0) {
+        message.value = errors[0];
         alertClass.value = 'alert-danger';
         return;
       }
 
-      if (!canSubmit.value) {
-        if (!faceData.value) {
-          message.value = '请先拍照完成人脸采集';
-        } else if (!username.value) {
-          message.value = '请输入用户名';
-        } else if (!password.value) {
-          message.value = '请输入密码';
-        }
+      if (!faceData.value) {
+        message.value = '请先拍照完成人脸采集';
         alertClass.value = 'alert-danger';
         return;
       }
@@ -199,28 +237,28 @@ export default {
       alertClass.value = 'alert-info';
 
       try {
-        const response = await authApi.register({
+        const data = await authApi.register({
           username: username.value,
           password: password.value,
           image: faceData.value,
           email: email.value,
         });
 
-        if (response.data.success) {
+        if (data.success) {
           message.value = '注册成功！';
           alertClass.value = 'alert-success';
           setTimeout(() => {
-            router.push('/login');
+            router.push('/');
           }, 2000);
         } else {
-          console.log(response.data.message);
-          if (response.data.message.includes('高度相似')) {
+          console.log(data.message);
+          if (data.message.includes('高度相似')) {
             similarityError.value = true;
-            existingUser.value = response.data.existingUser || '现有用户';
-            similarity.value = Math.round((response.data.similarity || 0.7) * 100);
+            existingUser.value = data.existingUser || '现有用户';
+            similarity.value = Math.round((data.similarity || 0.7) * 100);
             message.value = `检测到您可能与用户 ${existingUser.value} 高度相似 (相似度 ${similarity.value}%)`;
           } else {
-            message.value = '注册失败: ' + response.data.message;
+            message.value = '注册失败: ' + data.message;
           }
           alertClass.value = 'alert-danger';
         }
@@ -243,7 +281,7 @@ export default {
 
     const tryLogin = () => {
       router.push({
-        path: '/login',
+        path: '/ctlogin',
         query: { username: existingUser.value }
       });
     };

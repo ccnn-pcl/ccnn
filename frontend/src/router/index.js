@@ -37,28 +37,20 @@ const router = createRouter({
 
 // 导航守卫 - 检查登录状态
 router.beforeEach((to, from, next) => {
-  const isPublicRoute = to.path === '/ctlogin' || to.path === '/register';
-  const userData = localStorage.getItem('user');
-  // const isAuthenticated = userData && JSON.parse(userData).loggedIn;
   const isAuthenticated = authStore.isAuthenticated;
 
-  const userObj = JSON.parse(userData);
-
-  // 如果访问需要认证的页面但未登录
   if (to.meta.requiresAuth && !isAuthenticated) {
     return next('/ctlogin');
   }
-  if (to.path === '/highApp' && (!isAuthenticated || userObj.level != '高')) {
-    return next('/ctlogin');
+
+  if (to.path === '/highApp') {
+    const userData = localStorage.getItem('user');
+    const userObj = userData ? JSON.parse(userData) : {};
+    if (!isAuthenticated || userObj.level !== '高') {
+      return next('/ctlogin');
+    }
   }
-  // // 如果已登录但访问登录/注册页
-  // if (isAuthenticated && isPublicRoute) {
-  //   if (userObj.level == '高') {
-  //   return next('/highApp');
-  // } else if (userObj.level == '中') {
-  //   return next('/midApp');
-  // }
-  // }
+
   next();
 });
 

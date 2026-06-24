@@ -1,8 +1,11 @@
 .DS_Store
 node_modules
 /dist
-/dist-ssr
-*.local
+
+
+# local env files
+.env.local
+.env.*.local
 
 # Log files
 npm-debug.log*
@@ -18,81 +21,3 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Build artifacts
-coverage
-*.log
-*.pid
-*.seed
-*.pid.lock
-
-# Dependency directories
-jspm_packages/
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Optional stylelint cache
-.stylelintcache
-
-# Microbundle cache
-.rpt2_cache/
-.rts2_cache_cjs/
-.rts2_cache_es/
-.rts2_cache_umd/
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# vuepress build output
-.vuepress/dist
-
-# temporary files
-tmp/
-temp/
-
-# System files
-.DS_Store
-Thumbs.db
-
-# IDE specific files
-.vscode/
-.idea/
-
-# OS generated files
-ehthumbs.db
-Icon?
-Thumbs.db
-
-# Backup files
-*.bak
-*.backup
-*.old
-*.orig
-*.save
-
-# Test coverage
-coverage/
-.nyc_output
-
-# Build lock files
-yarn.lock
-package-lock.json

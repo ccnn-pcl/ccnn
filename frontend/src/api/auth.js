@@ -1,16 +1,10 @@
-import axios from 'axios';
-
-const API_URL = process.env.CYBERTWIN;
+import request from './request'
 
 export default {
   register(userData) {
-    // return axios.post(`${API_URL}/api/register`, userData);
-    return axios.post('/api/register', userData);
-
+    return request.post('/api/register', userData)
   },
-  login(userdata) {
-    // return axios.post(`${API_URL}/api/login`, userdata);
-    return axios.post('/api/login', userdata);
-
-  }
-};
+  login(userData) {
+    return request.post('/api/login', userData)
+  },
+}

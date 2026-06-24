@@ -9,7 +9,7 @@
     </main>
     
     <footer class="app-footer">
-      <VersionInfo :showAlways="true" />
+      
     </footer>
   </div>
 </template>
@@ -19,13 +19,10 @@
 import { useRouter } from 'vue-router';
 import { authStore, authActions } from './store/auth'
 import useDeviceDetect from './plugins/deviceDetect';
-import VersionInfo from './components/VersionInfo.vue';
+// import { UAParser } from 'ua-parser-js';
 
 export default {
   name: 'App',
-  components: {
-    VersionInfo
-  },
   setup() {
     authActions.initAuthState()
     console.log("process.env.CYBERTWIN==============",process.env.CYBERTWIN)
@@ -36,11 +33,32 @@ export default {
     console.log("process.env.KEEP_AUTH==============",process.env.KEEP_AUTH)
 
     const { deviceInfo } = useDeviceDetect();
+    // // 在需要的地方
+    // const parser = new UAParser();
+    // const result = parser.getResult();
 
+
+    // console.log(result.os); // 操作系统信息，包括name和version
+    // console.log(result.device, result.device.type, result.device.model); // 设备信息，如类型（mobile、tablet、desktop）、型号等
+    // alert(result.device)
     const router = useRouter();
+    // const isAuthenticated = computed(() => {
+    //   const user = localStorage.getItem('user');
+    //   return user && JSON.parse(user).loggedIn;
+    // });
+    
+    // const logout = () => {
+    //   localStorage.removeItem('user');
+    //   router.push('/login');
+    // };
+    
+    // return {
+    //   isAuthenticated,
+    //   logout
+    // };
     const handleLogout = () => {
       authActions.logout();
-      router.push('/login');
+      router.push('/ctlogin');
     };
     
     return {
@@ -57,7 +75,7 @@ export default {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   display: flex;
   flex-direction: column;
-  min-height: 98vh;
+  height: 100vh;
 }
 .level-high {
   color: green;
@@ -131,19 +149,16 @@ export default {
 main {
   margin: 0 auto;
   width: 100%;
-  height: 75vh;
+  flex: 1;
+  overflow: hidden;
 }
 
 .app-footer {
   height: 5vh;
-  /* background: #333; */
   background: linear-gradient(135deg, #3494e6, #ec6ead);
   color: white;
   text-align: center;
-  margin-top: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-shrink: 0;
 }
 
 nav {
@@ -212,5 +227,12 @@ h1 {
 .value {
   color: #333;
   flex-grow: 1;
+}
+</style>
+
+<style>
+body {
+  margin: 0;
+  padding: 0;
 }
 </style>

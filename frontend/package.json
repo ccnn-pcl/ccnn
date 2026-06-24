@@ -1,16 +1,11 @@
 {
   "name": "face_frontend",
-  "version": "v0.0.0-de79104",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint",
-    "version:show": "node -e \"console.log('当前版本:', require('./package.json').version)\"",
-    "version:auto": "node scripts/auto-version.js",
-    "version:timestamp": "node scripts/auto-version.js timestamp",
-    "version:semantic": "node scripts/auto-version.js semantic",
-    "version:inject": "node scripts/inject-version.js"
+    "lint": "vue-cli-service lint"
   },
   "dependencies": {
     "@dsb-norge/vue-keycloak-js": "^3.0.3",
@@ -20,6 +15,7 @@
     "keycloak-js": "^26.2.0",
     "markdown-it": "^14.1.0",
     "mobile-detect": "^1.4.5",
+    "pinia": "^3.0.4",
     "socket.io-client": "^4.8.1",
     "ua-parser-js": "^2.0.5",
     "vue": "^3.2.13",
@@ -52,6 +48,7 @@
   "browserslist": [
     "> 1%",
     "last 2 versions",
-    "not dead"
+    "not dead",
+    "not ie 11"
   ]
 }

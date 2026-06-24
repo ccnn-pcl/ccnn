@@ -1,140 +1,133 @@
-# CyberTwin Frontend
+# AI Twin Frontend (CyberTwin)
 
+人脸识别认证 + AI 聊天前端应用，基于 Vue 3，部署于 Kubernetes。
 
 ## 功能特性
 
-### 核心功能
-- 🔐 **用户认证与授权** - 基于cybertwin的安全认证系统
-- 📱 **设备信息展示** - 实时检测和展示设备信息
-- 🎭 **人脸识别功能** - 集成摄像头进行人脸识别
-- 💬 **实时通信** - 基于 Socket.io 的实时聊天功能
-
-### 页面功能
-- **首页** - 项目介绍和功能展示
-- **登录/注册** - 用户身份验证
-- **聊天界面** - 实时消息交流
-
+- 🔐 **人脸识别认证** - 摄像头采集人脸 + 密码双因素认证
+- 💬 **AI 实时聊天** - 基于 WebSocket 的 AI 对话，支持图片/文件上传
+- 📱 **设备指纹** - 自动检测设备信息用于风控
+- ⭐ **信任评分** - 实时轮询用户信任评分，低分自动登出
+- 🩺 **医疗模块跳转** - AI 回复可携带 redirect 元数据跳转到医疗前端
 
 ## 技术栈
 
-### 前端框架
-- **Vue 3** - 渐进式 JavaScript 框架
-- **Vue Router** - 官方路由管理器
-- **Vite** - 下一代前端构建工具
-
-### UI 和样式
-- **FontAwesome** - 图标库
-- **CSS3** - 现代化样式设计
-
-### 网络和通信
-- **Axios** - HTTP 客户端
-- **Socket.io** - 实时双向通信
-
-
-### 工具库
-- **mobile-detect** - 移动设备检测
-- **markdown-it** - Markdown 解析器
+| 类别 | 技术 |
+|------|------|
+| 框架 | Vue 3 (Composition API + `<script setup>`) |
+| 路由 | Vue Router 4 |
+| 状态管理 | Vue reactive (轻量) |
+| 构建 | Vue CLI 5 + Babel |
+| HTTP | Axios (统一拦截器) |
+| WebSocket | 原生 WebSocket |
+| 部署 | Docker + Nginx (K8s) |
+| 认证 | Keycloak OIDC |
+| 工具 | ua-parser-js, FontAwesome, markdown-it |
 
 ## 快速开始
 
 ### 环境要求
 
-- **Node.js** v22.16.0
-- **npm** 10.9.2
+- Node.js >= 16
+- npm
 
-### 安装依赖
+### 安装与运行
 
 ```bash
-
 # 安装依赖
 npm install
-```
 
-### 开发环境运行
-
-```bash
+# 开发环境运行
 npm run serve
-```
 
-
-### 生产环境构建
-
-```bash
+# 生产构建
 npm run build
 ```
 
-构建产物将生成在 `dist` 目录中。
-
+构建产物在 `dist/` 目录。
 
 ## 项目结构
 
 ```
-cybertwin-frontend/
+face_frontend/
 ├── public/                    # 静态资源
-│   └── favicon.ico          # 网站图标
-├── src/                      # 源代码
-│   ├── api/                 # API 接口
-│   │   ├── api.js          # Axios 实例配置
-│   │   ├── auth.js         # 认证相关 API
-│   ├── assets/              # 资源文件
-│   │   └── logo.png       # 项目 Logo
-│   ├── components/          # 可复用组件
-│   │   ├── DeviceInfo.vue  # 设备信息组件
-│   │   ├── FaceCamera.vue  # 人脸识别组件
-│   │   └── TypeWriter.vue # 打字机效果组件
-│   ├── plugins/             # Vue 插件
-│   │   └── deviceDetect.js # 设备检测插件
-│   ├── router/              # 路由配置
-│   │   └── index.js       # 路由定义
-│   ├── services/            # 业务服务
-│   │   └── socketService.js # Socket 服务
-│   ├── store/               # 状态管理
-│   │   └── auth.js        # 认证状态
-│   ├── views/               # 页面组件
-│   │   ├── Chat.vue       # 聊天页面
-│   │   ├── Dashboard.vue   # 仪表盘
-│   │   ├── Home.vue       # 首页
-│   │   ├── Login.vue      # 登录页
-│   │   └── Register.vue   # 注册页
-│   ├── App.vue             # 根组件
-│   ├── main.js             # 应用入口
-│   └── style.css           # 全局样式
-├── .env.development        # 开发环境变量
-├── .env.production         # 生产环境变量
-├── .gitignore             # Git 忽略配置
-├── babel.config.js        # Babel 配置
-├── index.html             # HTML 模板
-├── jsconfig.json          # JS 配置
-├── LICENSE                # MIT 许可证
-├── package.json           # 项目配置
-├── README.md             # 项目文档
-└── vite.config.js        # Vite 配置
+├── src/
+│   ├── api/                  # API 层
+│   │   ├── request.js       # Axios 实例 + 拦截器
+│   │   ├── auth.js          # 认证 API（登录/注册）
+│   │   └── chat.js          # 聊天 API
+│   ├── assets/               # 资源文件
+│   ├── components/           # 组件
+│   │   ├── chat/            # 聊天子组件
+│   │   │   ├── ChatMessage.vue   # 消息气泡
+│   │   │   ├── ChatInput.vue     # 输入框
+│   │   │   ├── Sidebar.vue       # 侧边栏
+│   │   │   └── HistoryPanel.vue  # 历史记录
+│   │   ├── DeviceInfo.vue   # 设备信息
+│   │   ├── FaceCamera.vue   # 人脸摄像头
+│   │   └── TypeWriter.vue   # 打字机效果
+│   ├── plugins/              # 插件
+│   │   └── deviceDetect.js  # 设备检测
+│   ├── router/
+│   │   └── index.js         # 路由 + 导航守卫
+│   ├── services/
+│   │   └── socketService.js # WebSocket 单例
+│   ├── store/
+│   │   └── auth.js          # 认证状态管理
+│   ├── views/
+│   │   ├── chat.vue         # 聊天主页面
+│   │   ├── home.vue         # 首页（自动跳转）
+│   │   ├── Login.vue        # 登录页
+│   │   └── Register.vue     # 注册页
+│   ├── App.vue              # 根组件
+│   └── main.js              # 入口
+├── k8s/                     # Kubernetes 部署文件
+│   ├── deployment.yaml     # Deployment（通用配置）
+│   ├── service.yaml        # Service（ClusterIP）
+│   └── configmap.yaml      # Nginx 配置
+├── Dockerfile                # Docker 构建
+├── nginx.conf                # Nginx 反向代理配置
+├── vue.config.js             # Vue CLI 配置
+└── package.json
 ```
-
-## 配置说明
-
-### 环境变量
-
-项目使用环境变量进行配置，请在 `.env.development` 和 `.env.production` 中配置：
-
-
 
 ## 部署
 
-### Docker 部署
+### Docker 构建
 
 ```bash
-# 构建镜像
-docker build -t cybertwin-frontend .
-
-# 运行容器
-docker run -p 80:80 cybertwin-frontend
+docker build -t CCNN/CCNN-frontend:latest .
 ```
 
-### Nginx 部署
+### Kubernetes 部署
 
-1. 构建项目：`npm run build`
-2. 将 `dist` 目录内容复制到 Nginx 服务器
-3. 配置 Nginx 指向 `index.html`
+项目通过 Nginx 容器提供静态文件 + 反向代理，`nginx.conf` 中配置了：
 
+| 路径 | 后端服务 |
+|------|---------|
+| `/api/v1/chat/ws` | user-agent:5050 (WebSocket) |
+| `/api/v1/chat/send` | user-agent:5050 |
+| `/api/me` | user-agent:5050 |
+| `/api/register` | CCNN-backend:5000 |
+| `/api/login` | CCNN-backend:5000 |
+| `/api/auth/login` | CCNN-backend:5000 |
+| `/api/keep-auth` | CCNN-backend:5000 |
+| `/login`, `/logout` | user-agent:5050 |
+| `/medical_frontend/` | medical-frontend:80 |
 
+### 部署到 Kubernetes
+
+```bash
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+```
+
+## 路由
+
+| 路径 | 页面 | 说明 |
+|------|------|------|
+| `/` | home | 自动跳转到 `/ctlogin` |
+| `/ctlogin` | Login | 登录页 |
+| `/register` | Register | 注册页 |
+| `/chat` | Chat | AI 聊天主界面 |

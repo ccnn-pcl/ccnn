@@ -246,41 +246,40 @@ export default defineComponent({
       alertClass.value = 'alert-info';
       
       try {
-        const response = await authApi.login({
+        const data = await authApi.login({
           username: username.value,
           password: password.value,
           image: faceData.value,
           deviceInfo: deviceInfo.value
         });
-        if (response.data.success) {
+        if (data.success) {
           authActions.login({
-            username: response.data.username,
-            level: response.data.trustscore,
+            username: data.username,
+            level: data.trustscore,
           })
-          message.value = response.data.message;
-          similarity.value = Math.round(response.data.similarity * 100);
+          message.value = data.message;
+          similarity.value = Math.round(data.similarity * 100);
           alertClass.value = 'alert-success';
           // 人脸通过 → 提交 OIDC 登录（只带 username）
           const form = document.createElement('form');
           form.method = 'POST';
-          // form.action = `${process.env.CYBERTWIN}/api/auth/login`;   // ← OIDC 域
-          form.action = '/api/auth/login';   // ← OIDC 域
+          form.action = '/api/auth/login';
 
-          form.appendChild(mkInput('username', response.data.username));
-          form.appendChild(mkInput('trustscore', response.data.trustscore));
+          form.appendChild(mkInput('username', data.username));
+          form.appendChild(mkInput('trustscore', data.trustscore));
           document.body.appendChild(form);
           form.submit();
         } else {
-          // 修复4：登录失败时重置状态
+          // 登录失败时重置状态
           isLoggingIn.value = false;
           faceData.value = null;
           faceImage.value = null;
           previewImage.value = null;
           
-          message.value = response.data.message;
+          message.value = data.message;
           alertClass.value = 'alert-danger';
-          similarity.value = response.data.similarity ? 
-            Math.round(response.data.similarity * 100) : null;
+          similarity.value = data.similarity ? 
+            Math.round(data.similarity * 100) : null;
         }
       } catch (error) {
         // 修复5：确保异常情况下重置状态

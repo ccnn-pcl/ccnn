@@ -1,5 +1,5 @@
 # 基础镜像（Python 3.12 精简版）
-FROM python:3.12-slim
+FROM py312-base:3.12-slim
 
 # 设置工作目录
 WORKDIR /app

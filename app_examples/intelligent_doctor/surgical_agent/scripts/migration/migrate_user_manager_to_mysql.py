@@ -21,9 +21,6 @@ user_manager.py 数据迁移脚本
 
 使用方法:
     python scripts/migration/migrate_user_manager_to_mysql.py
-
-作者: QSIR
-版本: 1.0
 """
 
 import sys

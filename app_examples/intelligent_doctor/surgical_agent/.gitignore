@@ -57,3 +57,5 @@ htmlcov/
 .env
 .env.local
 
+src/version.py
+

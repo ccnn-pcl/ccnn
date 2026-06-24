@@ -1,14 +1,13 @@
-# 使用官方Python 3.10镜像作为基础镜像
 FROM python:3.10-slim
 
-# 设置工作目录
+ARG BUILD_VERSION
+ARG GIT_COMMIT
+ARG BUILD_TIME
+
 WORKDIR /app
 
-
-# 使用国内镜像源
 RUN [ -f /etc/apt/sources.list.d/debian.sources ] && sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources || true && sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list/debian.sources || true
 
-# 安装系统依赖
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -16,23 +15,38 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制依赖文件
-COPY requirements.txt pyproject.toml uv.lock ./
 
-# 使用国内pip镜像源安装Python依赖
+COPY requirements.txt ./
+
 RUN pip install --no-cache-dir --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/ && \
-    pip install --no-cache-dir uv -i https://mirrors.aliyun.com/pypi/simple/ && \
-    uv pip install --system --no-cache -r pyproject.toml -i https://mirrors.aliyun.com/pypi/simple/
+    pip install --no-cache-dir -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
-# 复制应用代码
 COPY ./src ./src
 COPY ./scripts ./scripts
 
-# 创建数据目录
-RUN mkdir -p /app/data/北京/BJ001 /app/data/上海/SH001 /app/data/backups
+RUN rm -f src/version.py && \
+    echo "__version__ = '${BUILD_VERSION}'" > src/version.py && \
+    echo "__major__ = $(echo ${BUILD_VERSION} | cut -d. -f1)" >> src/version.py && \
+    echo "__minor__ = $(echo ${BUILD_VERSION} | cut -d. -f2)" >> src/version.py && \
+    echo "__patch__ = $(echo ${BUILD_VERSION} | cut -d. -f3)" >> src/version.py && \
+    echo "__git_commit__ = '${GIT_COMMIT}'" >> src/version.py && \
+    echo "__build_time__ = '${BUILD_TIME}'" >> src/version.py && \
+    echo "" >> src/version.py && \
+    echo "def get_version() -> str:" >> src/version.py && \
+    echo "    return __version__" >> src/version.py && \
+    echo "" >> src/version.py && \
+    echo "def get_version_info() -> dict:" >> src/version.py && \
+    echo "    return {" >> src/version.py && \
+    echo "        \"version\": __version__," >> src/version.py && \
+    echo "        \"major\": __major__," >> src/version.py && \
+    echo "        \"minor\": __minor__," >> src/version.py && \
+    echo "        \"patch\": __patch__," >> src/version.py && \
+    echo "        \"build_time\": __build_time__," >> src/version.py && \
+    echo "        \"git_commit\": __git_commit__," >> src/version.py && \
+    echo "    }" >> src/version.py
 
-# 设置权限
+RUN mkdir -p /app/data/BJ/BJ001 /app/data/SH/SH001 /app/data/backups
+
 RUN chmod -R 755 /app/data
 
-# 启动命令
 CMD ["python", "-m", "src.main"]

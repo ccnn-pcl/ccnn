@@ -1,10 +1,8 @@
-# streamlit==1.32.0
 fastapi==0.110.0
 uvicorn==0.27.1
 python-multipart==0.0.9
 aiohttp==3.9.3
 python-dotenv==1.0.1
-pydantic>=2.6.3
 sqlalchemy==2.0.28
 pillow>=10.2.0
 requests==2.31.0
@@ -15,18 +13,14 @@ PyJWT==2.8.0
 cryptography==41.0.7
 bcrypt==4.1.2
 passlib==1.7.4
-# 流处理相关依赖
 sse-starlette==1.6.5
-# WebSocket支持已移除
-# 标准A2A SDK支持（用于EntryAgent）
 httpx>=0.24.0
-a2a-sdk>=0.3.15  # 标准A2A协议SDK
-# MCP协议支持（用于数据存储服务）
-mcp>=0.1.0  # Model Context Protocol客户端
-fastmcp>=0.1.0  # FastMCP认证支持
-# MySQL支持
-aiomysql>=0.2.0  # MySQL异步驱动
-pymysql>=1.1.0  # MySQL同步驱动（用于认证适配器）
-# PostgreSQL支持已迁移到MySQL，相关依赖已注释
-# asyncpg>=0.29.0  # PostgreSQL异步驱动（已迁移到MySQL）
+a2a-sdk>=0.3.15
+mcp>=0.1.0
+fastmcp>=0.1.0
+aiomysql>=0.2.0
+pymysql>=1.1.0
+itsdangerous>=2.2.0
+pydantic[email]>=2.6.3
+structlog>=25.5.0
 

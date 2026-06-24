@@ -1,5 +1,5 @@
 # 基础镜像：轻量Python 3.11
-FROM python:3.12-slim
+FROM py312-base:3.12-slim
 
 # 工作目录
 WORKDIR /app

@@ -82,6 +82,7 @@ inject-version:
 	@mkdir -p backend
 	@python3 scripts/inject_version.py $(BUILD_VERSION) "$(GIT_COMMIT)" "$(BUILD_TIME)"
 	@echo "✅ 版本信息注入完成"
+	@echo "ℹ️  仅用于本地开发（make run）；Docker 构建在镜像内注入，不修改宿主机工作区"
 
 #===============================================================
 # 环境和依赖
@@ -126,7 +127,9 @@ freeze: venv
 	$(PIP) freeze > requirements.txt
 	@echo "Wrote requirements.txt"
 
-docker-build: inject-version
+# Docker 构建：版本注入在 Dockerfile 内完成（见 COPY 后的 RUN inject_version.py）
+# 不再依赖 inject-version，避免构建前改写 backend/version.py 导致工作区脏文件
+docker-build:
 	@echo "🐳 构建 Docker 镜像..."
 	@echo "   镜像标签: $(IMAGE_TAG)"
 	@echo "   平台: $(PLATFORM)"
@@ -139,7 +142,8 @@ docker-build: inject-version
 		-t $(IMAGE_TAG) .
 	@echo "✅ Docker 镜像构建成功"
 
-docker-build-no-cache: inject-version
+# 同 docker-build：镜像内注入版本，不在宿主机修改源码
+docker-build-no-cache:
 	@echo "🐳 构建 Docker 镜像 (无缓存)..."
 	@echo "   镜像标签: $(IMAGE_TAG)"
 	@echo "   平台: $(PLATFORM)"

@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"git.pcl.ac.cn/CN/MedicalMaterialsMcpService/logger"
+	"github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/logger"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/modelcontextprotocol/go-sdk/auth"
 )

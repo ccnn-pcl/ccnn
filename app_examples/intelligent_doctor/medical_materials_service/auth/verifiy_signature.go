@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"time"
 
-	"git.pcl.ac.cn/CN/MedicalMaterialsMcpService/config"
-	"git.pcl.ac.cn/CN/MedicalMaterialsMcpService/logger"
+	"github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/config"
+	"github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/logger"
 	"github.com/go-resty/resty/v2"
 )
 

@@ -1,4 +1,4 @@
-module git.pcl.ac.cn/CN/MedicalMaterialsMcpService
+module github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service
 
 go 1.23.0
 

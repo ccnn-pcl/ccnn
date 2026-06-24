@@ -18,9 +18,9 @@ package tools
 import (
 	"context"
 
-	handler "git.pcl.ac.cn/CN/MedicalMaterialsMcpService/api"
-	apiModel "git.pcl.ac.cn/CN/MedicalMaterialsMcpService/api/model"
-	"git.pcl.ac.cn/CN/MedicalMaterialsMcpService/logger"
+	handler "github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/api"
+	apiModel "github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/api/model"
+	"github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/logger"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

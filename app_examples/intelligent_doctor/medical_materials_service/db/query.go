@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"git.pcl.ac.cn/CN/MedicalMaterialsMcpService/db/model"
+	"github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/db/model"
 )
 
 func QueryPatientVisitInfo(ctx context.Context, userID string, illnessKeyWord string, department string, startTime time.Time) ([]model.Visit, error) {

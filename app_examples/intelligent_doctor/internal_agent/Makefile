@@ -113,8 +113,7 @@ build: _version_inject ## 构建项目
 docker-build: _version_inject ## 构建Docker镜像
 	@echo "$(BLUE)构建Docker镜像: $(IMAGE_NAME):$(DOCKER_TAG)$(NC)"
 	docker build \
-		-t $(IMAGE_NAME):$(DOCKER_TAG) \
-		-t $(IMAGE_NAME):$(VERSION) \
+		-t $(IMAGE_NAME):$(DOCKER_TAG)
 		.
 	@echo "$(GREEN)✓ Docker镜像构建完成$(NC)"
 	@echo "  镜像: $(GREEN)$(IMAGE_NAME):$(DOCKER_TAG)$(NC)"

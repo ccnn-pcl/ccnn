@@ -1,5 +1,5 @@
 # 明确指定 x86 架构的基础镜像
-FROM --platform=linux/amd64 python:3.12-slim
+FROM py312-base:3.12-slim
 
 # 设置工作目录
 WORKDIR /app

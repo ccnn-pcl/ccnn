@@ -4,6 +4,12 @@ metadata:
   name: CCNN-frontend-nginx-config
   namespace: CCNN
 data:
+  config.js: |
+    // 运行时配置（修改后重启 Pod 即可生效，无需重新打包镜像）
+    window.__APP_CONFIG__ = {
+      AMAP_KEY: '',  // 填入高德 Key
+    }
+
   nginx.conf: |
     server {
         listen       80;

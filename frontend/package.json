@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "serve": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@dsb-norge/vue-keycloak-js": "^3.0.3",
@@ -22,14 +22,12 @@
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.12.16",
-    "@babel/eslint-parser": "^7.12.16",
-    "@vue/cli-plugin-babel": "~5.0.0",
-    "@vue/cli-plugin-eslint": "~5.0.0",
-    "@vue/cli-service": "~5.0.0",
-    "dotenv-webpack": "^8.1.1",
-    "eslint": "^7.32.0",
-    "eslint-plugin-vue": "^8.0.3"
+    "@babel/core": "^7.24.0",
+    "@babel/eslint-parser": "^7.24.0",
+    "@vitejs/plugin-vue": "^5.2.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-vue": "^8.7.0",
+    "vite": "^6.3.0"
   },
   "eslintConfig": {
     "root": true,
@@ -41,7 +39,8 @@
       "eslint:recommended"
     ],
     "parserOptions": {
-      "parser": "@babel/eslint-parser"
+      "parser": "@babel/eslint-parser",
+      "requireConfigFile": false
     },
     "rules": {}
   },

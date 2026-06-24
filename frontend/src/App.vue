@@ -9,53 +9,25 @@
     </main>
     
     <footer class="app-footer">
-      
+      <p>AI Twin &copy; CCNN</p>
     </footer>
   </div>
 </template>
 
 <script>
-// import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { authStore, authActions } from './store/auth'
 import useDeviceDetect from './plugins/deviceDetect';
-// import { UAParser } from 'ua-parser-js';
 
 export default {
   name: 'App',
   setup() {
     authActions.initAuthState()
-    console.log("process.env.CYBERTWIN==============",process.env.CYBERTWIN)
-    console.log("process.env.USER_AGENT==============",process.env.USER_AGENT)
-    console.log("process.env.API_ME==============",process.env.API_ME)
-    console.log("process.env.MEDICAL_FRONTEND==============",process.env.MEDICAL_FRONTEND)
-    console.log("process.env.LOUGUT_URL==============",process.env.LOUGUT_URL)
-    console.log("process.env.KEEP_AUTH==============",process.env.KEEP_AUTH)
 
     const { deviceInfo } = useDeviceDetect();
-    // // 在需要的地方
-    // const parser = new UAParser();
-    // const result = parser.getResult();
 
-
-    // console.log(result.os); // 操作系统信息，包括name和version
-    // console.log(result.device, result.device.type, result.device.model); // 设备信息，如类型（mobile、tablet、desktop）、型号等
-    // alert(result.device)
     const router = useRouter();
-    // const isAuthenticated = computed(() => {
-    //   const user = localStorage.getItem('user');
-    //   return user && JSON.parse(user).loggedIn;
-    // });
-    
-    // const logout = () => {
-    //   localStorage.removeItem('user');
-    //   router.push('/login');
-    // };
-    
-    // return {
-    //   isAuthenticated,
-    //   logout
-    // };
+
     const handleLogout = () => {
       authActions.logout();
       router.push('/ctlogin');
@@ -64,7 +36,7 @@ export default {
     return {
       authStore,
       handleLogout,
-      deviceInfo
+      deviceInfo,
     };
   }
 };
@@ -159,6 +131,10 @@ main {
   color: white;
   text-align: center;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
 nav {

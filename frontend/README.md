@@ -7,6 +7,7 @@
 - 🔐 **人脸识别认证** - 摄像头采集人脸 + 密码双因素认证
 - 💬 **AI 实时聊天** - 基于 WebSocket 的 AI 对话，支持图片/文件上传
 - 📱 **设备指纹** - 自动检测设备信息用于风控
+- 📍 **GPS 定位采集** - `navigator.geolocation` + 高德 API 解码到区级（需 HTTPS）
 - ⭐ **信任评分** - 实时轮询用户信任评分，低分自动登出
 - 🩺 **医疗模块跳转** - AI 回复可携带 redirect 元数据跳转到医疗前端
 
@@ -16,10 +17,11 @@
 |------|------|
 | 框架 | Vue 3 (Composition API + `<script setup>`) |
 | 路由 | Vue Router 4 |
-| 状态管理 | Vue reactive (轻量) |
-| 构建 | Vue CLI 5 + Babel |
+| 状态管理 | Pinia |
+| 构建 | Vite 6 |
 | HTTP | Axios (统一拦截器) |
 | WebSocket | 原生 WebSocket |
+| 定位 | navigator.geolocation + 高德 Web API |
 | 部署 | Docker + Nginx (K8s) |
 | 认证 | Keycloak OIDC |
 | 工具 | ua-parser-js, FontAwesome, markdown-it |
@@ -28,8 +30,17 @@
 
 ### 环境要求
 
-- Node.js >= 16
+- Node.js >= 18
 - npm
+
+### 环境变量
+
+创建 `.env` 文件（本地开发）和 `.env.production`（生产构建），变量以 `VITE_` 开头：
+
+```bash
+VITE_AMAP_KEY=your_amap_key          # 高德地图 API Key
+VITE_MEDICAL_FRONTEND=http://...     # 医疗前端地址
+```
 
 ### 安装与运行
 
@@ -50,7 +61,9 @@ npm run build
 
 ```
 face_frontend/
-├── public/                    # 静态资源
+├── index.html                   # Vite 入口（根目录）
+├── public/
+│   └── config.js              # 运行时配置（K8s ConfigMap 注入）
 ├── src/
 │   ├── api/                  # API 层
 │   │   ├── request.js       # Axios 实例 + 拦截器
@@ -59,35 +72,39 @@ face_frontend/
 │   ├── assets/               # 资源文件
 │   ├── components/           # 组件
 │   │   ├── chat/            # 聊天子组件
-│   │   │   ├── ChatMessage.vue   # 消息气泡
-│   │   │   ├── ChatInput.vue     # 输入框
-│   │   │   ├── Sidebar.vue       # 侧边栏
-│   │   │   └── HistoryPanel.vue  # 历史记录
-│   │   ├── DeviceInfo.vue   # 设备信息
-│   │   ├── FaceCamera.vue   # 人脸摄像头
-│   │   └── TypeWriter.vue   # 打字机效果
-│   ├── plugins/              # 插件
-│   │   └── deviceDetect.js  # 设备检测
+│   │   │   ├── ChatMessage.vue
+│   │   │   ├── ChatInput.vue
+│   │   │   ├── Sidebar.vue
+│   │   │   └── HistoryPanel.vue
+│   │   ├── DeviceInfo.vue
+│   │   ├── FaceCamera.vue
+│   │   └── TypeWriter.vue
+│   ├── composables/          # 组合式函数
+│   │   └── useGeolocation.js # GPS 定位 + 高德解码
+│   ├── plugins/
+│   │   └── deviceDetect.js
 │   ├── router/
-│   │   └── index.js         # 路由 + 导航守卫
+│   │   └── index.js
 │   ├── services/
-│   │   └── socketService.js # WebSocket 单例
+│   │   └── socketService.js
 │   ├── store/
-│   │   └── auth.js          # 认证状态管理
+│   │   └── auth.js
 │   ├── views/
-│   │   ├── chat.vue         # 聊天主页面
-│   │   ├── home.vue         # 首页（自动跳转）
-│   │   ├── Login.vue        # 登录页
-│   │   └── Register.vue     # 注册页
-│   ├── App.vue              # 根组件
-│   └── main.js              # 入口
-├── k8s/                     # Kubernetes 部署文件
-│   ├── deployment.yaml     # Deployment（通用配置）
-│   ├── service.yaml        # Service（ClusterIP）
-│   └── configmap.yaml      # Nginx 配置
-├── Dockerfile                # Docker 构建
-├── nginx.conf                # Nginx 反向代理配置
-├── vue.config.js             # Vue CLI 配置
+│   │   ├── chat.vue
+│   │   ├── home.vue
+│   │   ├── Login.vue
+│   │   └── Register.vue
+│   ├── App.vue
+│   └── main.js
+├── k8s/
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   └── configmap.yaml        # Nginx + config.js（含高德 Key）
+├── .env                       # 本地环境变量（gitignore）
+├── .env.production            # 生产环境变量
+├── Dockerfile
+├── nginx.conf
+├── vite.config.js
 └── package.json
 ```
 
@@ -96,7 +113,7 @@ face_frontend/
 ### Docker 构建
 
 ```bash
-docker build -t CCNN/CCNN-frontend:latest .
+docker build -t face-frontend .
 ```
 
 ### Kubernetes 部署

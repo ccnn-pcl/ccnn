@@ -6,6 +6,7 @@ import logging
 import requests
 from datetime import datetime
 from config import TRUST_SERVICE_URL
+from src.china_cities import get_nearest_city
 
 logger = logging.getLogger(__name__)
 
@@ -109,16 +110,34 @@ def resolve_client_ip(request) -> str:
     return ipv4
 
 
+# ============== 离线经纬度→城市转换 ==============
+
+def reverse_geocode_city(lat: float, lng: float) -> str:
+    """离线将经纬度转换为城市名（KDTree 最近邻匹配中国地级市），失败返回空字符串"""
+    try:
+        city = get_nearest_city(lat, lng)
+        logger.info("离线逆地理编码: (%.4f, %.4f) -> %s", lat, lng, city)
+        return city
+    except Exception:
+        logger.exception("离线逆地理编码异常, lat=%s, lng=%s", lat, lng)
+        return ""
+
+
 # ============== 信任评分服务调用 ==============
 
-def call_trust_service(ipv4: str, device_info: dict, bio_val: float, has_pws: float) -> float:
+def call_trust_service(ipv4: str, device_info: dict, bio_val: float, has_pws: float, city: str = "") -> float:
     """调用信任评分服务，返回 trust_score，异常时返回 -1"""
+    logger.info("调用信任评分服务------城市信息： %s",city)
+
+    if not city:
+        city = "深圳"
+
     payload = {
         "ipaddress": ipv4,
         "pswd": has_pws,
         "time": datetime.now().hour,
         "bio": float(bio_val),
-        "city": "深圳"
+        "city": city
     }
 
     # 构建设备信息字符串

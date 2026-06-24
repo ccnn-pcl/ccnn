@@ -117,10 +117,11 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import FaceCamera from '@/components/FaceCamera.vue';
 import authApi from '@/api/auth';
+import useGeolocation from '@/composables/useGeolocation';
 
 export default {
   components: { FaceCamera },
@@ -139,6 +140,25 @@ export default {
     const similarity = ref(0);
     const router = useRouter();
     const faceCamera = ref(null);
+    const { getLocation } = useGeolocation();
+    let cachedLocation = null;
+    let locationTimer = null;
+
+    const refreshLocation = () => {
+      getLocation().then((loc) => {
+        if (loc) cachedLocation = loc
+        console.log('📍 注册页位置:', loc)
+      })
+    }
+
+    onMounted(() => {
+      refreshLocation()
+      locationTimer = setInterval(refreshLocation, 2 * 60 * 1000)
+    })
+
+    onUnmounted(() => {
+      if (locationTimer) clearInterval(locationTimer)
+    })
 
     const canSubmit = computed(() => {
       return username.value && password.value && confirmPassword.value && faceData.value;
@@ -237,11 +257,19 @@ export default {
       alertClass.value = 'alert-info';
 
       try {
+        if (!cachedLocation) {
+          cachedLocation = await Promise.race([
+            getLocation(),
+            new Promise((r) => setTimeout(() => r(null), 2000)),
+          ])
+        }
+
         const data = await authApi.register({
           username: username.value,
           password: password.value,
           image: faceData.value,
           email: email.value,
+          location: cachedLocation,
         });
 
         if (data.success) {

@@ -10,6 +10,8 @@ from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from config import OIDC_CONFIG, JWKS_URI, CLIENTS, TRUST_SERVICE_URL, LOGIN_PAGE_URL
+from src.utils import resolve_client_ip
+from src.events import publish_event, EVENT_LOGOUT, last_login_location
 import logging
 
 logger = logging.getLogger(__name__)
@@ -270,8 +272,22 @@ def end_session():
     post_logout_redirect_uri = request.args.get('post_logout_redirect_uri')
     state = request.args.get('state')
 
-    # 1. 统一清全局会话（无论验证是否成功）
+    # 0. 退出事件推送（清会话前获取用户信息）
+    ipv4 = resolve_client_ip(request)
     sso_session_id = session.get('sso_session_id')
+    sso = sso_sessions.get(sso_session_id) if sso_session_id else None
+    if sso:
+        user_id = sso.get('user_id', 0)
+        device_str = sso.get('device', '')
+        location_str = sso.get('location', '')
+        logger.info(f"OIDC退出: user_id={user_id}, ip={ipv4}, device={device_str}, location={location_str}")
+        publish_event(EVENT_LOGOUT, user_id, device_str, ipv4, location_str)
+        # 清除该 IP 的登录位置缓存
+        last_login_location.pop(ipv4, None)
+    else:
+        logger.info("OIDC退出: 未找到有效会话")
+
+    # 1. 统一清全局会话（无论验证是否成功）
     if sso_session_id and sso_session_id in sso_sessions:
         del sso_sessions[sso_session_id]
     session.clear()  # 清浏览器 cookie

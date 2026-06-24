@@ -9,7 +9,9 @@ export const chatApi = {
     return request.get('/api/me')
   },
 
-  keepAuth(deviceInfo) {
-    return request.post('/api/keep-auth', { deviceInfo })
+  keepAuth({ deviceInfo, location }) {
+    const data = { deviceInfo }
+    if (location) data.location = location
+    return request.post('/api/keep-auth', data)
   },
 }

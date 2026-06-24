@@ -4,34 +4,39 @@ metadata:
   name: oidc-env
   namespace: CCNN
 data:
-  # ---------- OIDC 提供者配置 ----------
-  OIDC_CONFIG: >-
-    {"issuer":"http://<OP_SERVICE_HOST>:31111","authorization_endpoint":"http://<OP_SERVICE_HOST>:31111/authorize","token_endpoint":"http://<OP_SERVICE_HOST>:31111/token","userinfo_endpoint":"http://<OP_SERVICE_HOST>:31111/userinfo","jwks_uri":"http://<OP_SERVICE_HOST>:31111/.well-known/jwks.json","end_session_endpoint":"http://<OP_SERVICE_HOST>:31111/endsession","scopes_supported":["openid","profile","email"],"response_types_supported":["code"],"subject_types_supported":["public"],"id_token_signing_alg_values_supported":["RS256"]}
+  # ========== OIDC 提供者 ==========
+  # 只需配 issuer 和端口，其余端点由 config.py 自动拼接
+  OIDC_ISSUER: http://<OP_SERVICE_HOST>:31111
 
-  JWKS_URI: http://<OP_SERVICE_HOST>:31111/.well-known/jwks.json
-
-  # ---------- OIDC 客户端注册 ----------
+  # ========== OIDC 客户端注册 ==========
   CLIENTS: >-
-    {"user_agent":{"secret":"user_agent-secret","redirect_uris":["http://<USER_AGENT_HOST>:30050/callback"],"post_logout_redirect_uris":["http://<USER_AGENT_HOST>:30050"]},"app2":{"secret":"app2-secret","redirect_uris":["http://localhost:5002/callback"],"post_logout_redirect_uris":["http://localhost:5002"]}}
+    {"user_agent":{"secret":"<USER_AGENT_SECRET>","redirect_uris":["http://<USER_AGENT_HOST>:30050/callback"],"post_logout_redirect_uris":["http://<USER_AGENT_HOST>:30050"]},"app2":{"secret":"<APP2_SECRET>","redirect_uris":["http://localhost:5002/callback"],"post_logout_redirect_uris":["http://localhost:5002"]}}
 
-  # ---------- 数据库 ----------
+  # ========== 数据库 ==========
   DATABASE_URI: sqlite:///data/cybertwin.db
-  MYSQL_DB1_URL: mysql+pymysql://<user>:<password>@<mysql-host1>:3306/cybertwin?charset=utf8mb4
-  MYSQL_DB2_URL: mysql+pymysql://<user>:<password>@<mysql-host2>:3306/cybertwin?charset=utf8mb4
+  MYSQL_DB1_URL: mysql+pymysql://<MYSQL_USER>:<MYSQL_PASSWORD>@<MYSQL_HOST1>:3306/cybertwin?charset=utf8mb4
+  MYSQL_DB2_URL: mysql+pymysql://<MYSQL_USER>:<MYSQL_PASSWORD>@<MYSQL_HOST2>:3306/cybertwin?charset=utf8mb4
 
-  # ---------- 内部服务 ----------
-  TRUST_SERVICE_URL: http://auth-service.cybertwin.svc.cluster.local:80/evaluate/user-trust
+  # ========== 内部服务 ==========
+  TRUST_SERVICE_URL: http://auth-service.cybertwin.svc.cluster.local/evaluate/user-trust
 
-  # ---------- 前端 ----------
-  LOGIN_PAGE_URL: https://<FRONTEND_HOST>/ctlogin
-  CORS_ORIGINS: http://localhost:3000,https://<FRONTEND_HOST>
+  # ========== 前端 ==========
+  LOGIN_PAGE_URL: https://<CCNN-frontend_HOST>/ctlogin
+  CORS_ORIGINS: https://<CCNN-frontend_HOST>
 
-  # ---------- 接入端 ----------
-  OPENXG_ADDR: '"http://<OPENXG_HOST>:30102/cert_link/v1/auth"'
+  # ========== 接入端 ==========
+  OPENXG_ADDR: http://<OPENXG_HOST>:30102/cert_link/v1/auth
 
-  # ---------- Session Cookie 配置 ----------
+  # ========== Session Cookie ==========
   SESSION_COOKIE_DOMAIN: .<YOUR_DOMAIN>
   SESSION_COOKIE_HTTPONLY: "True"
   SESSION_COOKIE_PATH: /
   SESSION_COOKIE_SAMESITE: Lax
   SESSION_COOKIE_SECURE: "True"
+
+  # ========== Kafka ==========
+  KAFKA_BROKER: 192.168.193.82:31493
+  KAFKA_TOPIC: _cybertwin_event_
+  KAFKA_GROUP_ID: cybertwin_event_sr_group
+  KAFKA_USERNAME: admin
+  KAFKA_PASSWORD: pcnl@2026

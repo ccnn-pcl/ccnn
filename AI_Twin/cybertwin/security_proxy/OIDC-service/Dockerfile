@@ -1,6 +1,6 @@
+# syntax=docker/dockerfile:1
 FROM docker.io/python:3.10.18-slim
 
-# 系统库 + OpenGL + 编译工具（cmake 3.31）
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential curl libopenblas-dev liblapack-dev \
@@ -12,6 +12,12 @@ RUN apt-get update && \
     ln -sf /opt/bin/cmake /usr/bin/cmake && rm cmake.tar.gz
 
 WORKDIR /app
+
+COPY requirements.txt .
+
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --only-binary=dlib -r requirements.txt
+
 COPY . .
-RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 CMD ["python", "run.py"]

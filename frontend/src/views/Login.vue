@@ -112,12 +112,12 @@
 </template>
 
 <script>
-import { ref, computed, defineComponent, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, defineComponent, watch, onMounted, onUnmounted } from 'vue';
 import FaceCamera from '@/components/FaceCamera.vue';
 import authApi from '@/api/auth';
 import { authActions } from '@/store/auth'
 import useDeviceDetect from '@/plugins/deviceDetect';
+import useGeolocation from '@/composables/useGeolocation';
 
 
 export default defineComponent({
@@ -126,8 +126,6 @@ export default defineComponent({
     FaceCamera
   },
   setup() {
-    const router = useRouter();
-    
     // 响应式数据
     const username = ref('');
     const password = ref('');
@@ -141,6 +139,28 @@ export default defineComponent({
     const faceCamera = ref(null);
     const previewImage = ref(null);
     const { deviceInfo } = useDeviceDetect();
+    const { getLocation } = useGeolocation();
+    let cachedLocation = null;  // 提前获取，登录时不等待
+    let locationTimer = null;
+
+    // 获取并缓存位置
+    const refreshLocation = () => {
+      getLocation().then((loc) => {
+        if (loc) cachedLocation = loc
+        console.log('📍 登录页位置:', loc)
+      })
+    }
+
+    // 页面加载时立刻开始获取位置
+    onMounted(() => {
+      refreshLocation()
+      // 每2分钟刷新，防止用户停留过久位置过期
+      locationTimer = setInterval(refreshLocation, 2 * 60 * 1000)
+    })
+
+    onUnmounted(() => {
+      if (locationTimer) clearInterval(locationTimer)
+    })
 
 
     // 修复1：监听输入变化重置错误状态
@@ -246,11 +266,20 @@ export default defineComponent({
       alertClass.value = 'alert-info';
       
       try {
+        // 如果后台还没拿到位置，再给 2 秒机会（不卡太久）
+        if (!cachedLocation) {
+          cachedLocation = await Promise.race([
+            getLocation(),
+            new Promise((r) => setTimeout(() => r(null), 2000)),
+          ])
+        }
+
         const data = await authApi.login({
           username: username.value,
           password: password.value,
           image: faceData.value,
-          deviceInfo: deviceInfo.value
+          deviceInfo: deviceInfo.value,
+          location: cachedLocation,  // 提前获取的经纬度（可能为 null）
         });
         if (data.success) {
           authActions.login({

@@ -59,6 +59,13 @@ TRUST_SERVICE_URL=http://CCNN-trust-service/evaluate/user-trust
 
 # 外部登录页面 URL
 LOGIN_PAGE_URL=http://CCNN-frontend/login
+
+# Kafka 事件推送
+KAFKA_BROKER=192.168.193.82:31493
+KAFKA_TOPIC=_cybertwin_event_
+KAFKA_GROUP_ID=cybertwin_event_sr_group
+KAFKA_USERNAME=admin
+KAFKA_PASSWORD=pcnl@2026
 ```
 
 ### 启动服务
@@ -87,13 +94,15 @@ cybertwin-OIDC-service/
 │
 ├── user/                   # 用户管理蓝图
 │   ├── __init__.py
-│   └── views.py            # 注册/登录/持续认证
+│   └── views.py            # 注册/登录/退出/持续认证
 │
 ├── src/                    # 公共模块
 │   ├── __init__.py
 │   ├── database.py         # 数据库引擎（主备故障转移）
 │   ├── models.py           # User 模型（密码哈希/人脸编码/ID 生成）
-│   └── utils.py            # 图像处理/IP 解析/信任评分调用
+│   ├── utils.py            # 图像处理/IP 解析/信任评分调用/离线逆地理编码
+│   ├── events.py           # Kafka 事件发布（注册/登录/退出）
+│   └── china_cities.py     # 中国地级市坐标 KDTree（离线经纬度→城市）
 │
 └── k8s/                    # Kubernetes 部署配置
     ├── configmap.yaml      # 环境变量配置
@@ -121,6 +130,7 @@ cybertwin-OIDC-service/
 | `/api/register` | POST | 用户注册（用户名+密码+人脸+邮箱） |
 | `/api/login` | POST | 登录（人脸或账密），返回信任分 |
 | `/api/auth/login` | POST | OIDC 流程登录，创建 SSO 会话 |
+| `/api/logout` | POST | 退出登录 |
 | `/api/keep-auth` | POST | 持续认证，刷新信任分 |
 
 ### JWT 服务端点
@@ -140,6 +150,33 @@ cybertwin-OIDC-service/
 | 人脸识别 | face_recognition + dlib + OpenCV |
 | 密码哈希 | bcrypt |
 | 密钥 | RSA 2048-bit |
+
+## 事件推送
+
+用户行为事件通过 Kafka 实时推送（SASL_PLAINTEXT / SCRAM-SHA-512），用于风控和审计。
+
+| event_id | 事件 | 触发点 |
+|----------|------|--------|
+| 1000 | 登录成功 | `POST /api/login` |
+| 1001 | 登录失败 | `POST /api/login` |
+| 1002 | 退出登录 | `POST /api/logout`、`GET /endsession` |
+| 1003 | 注册成功 | `POST /api/register` |
+| 1004 | 注册失败 | `POST /api/register` |
+
+事件载荷格式：
+```json
+{
+    "event_id": 1000,
+    "user_id": 789456,
+    "device": "iPhone 15,iOS17.4",
+    "ip": "114.06.22.101",
+    "location": "深圳市,22.628,113.934",
+    "event_time": "2026-06-17 16:20:35.123",
+    "message_content": { "login_type": "face" }
+}
+```
+
+位置信息获取优先级：前端 `location.city` > 后端 KDTree 离线编码（300+ 中国地级市）> 缓存复用。
 
 ## 开发说明
 

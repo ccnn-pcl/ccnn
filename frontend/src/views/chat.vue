@@ -22,7 +22,6 @@
         </div>
 
         <ChatInput
-          ref="chatInputRef"
           v-model="userInput"
           :disabled="waiting"
           :attachments="chatAttachments"
@@ -42,6 +41,7 @@
 import { ref, onMounted, onUpdated, onUnmounted, nextTick } from 'vue'
 import { socketService } from '@/services/socketService'
 import useDeviceDetect from '@/plugins/deviceDetect'
+import useGeolocation from '@/composables/useGeolocation'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
 import Sidebar from '@/components/chat/Sidebar.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
@@ -61,10 +61,11 @@ const messagesContainer = ref(null)
 const chatAttachments = ref([])
 const waiting = ref(false)
 const sidebarVisible = ref(true)
-const chatInputRef = ref(null)
 
 // 设备检测
 const { deviceInfo } = useDeviceDetect()
+const { getLocation } = useGeolocation()
+let cachedLocation = null  // 只获取一次，供轮询复用
 
 // 侧边栏
 const toggleSidebar = () => {
@@ -188,7 +189,7 @@ const initSocket = () => {
           user_input: userInputCopy.value.trim(),
         })
         setTimeout(() => {
-          window.open(`${process.env.MEDICAL_FRONTEND}/?${params.toString()}`, '_blank')
+          window.open(`${import.meta.env.VITE_MEDICAL_FRONTEND}/?${params.toString()}`, '_blank')
         }, 1500)
       }
       scrollToBottom()
@@ -223,25 +224,17 @@ const scrollToBottom = () => {
   })
 }
 
-// 历史记录
-const toggleHistory = () => {
-  showHistory.value = !showHistory.value
-}
-
-const clearChat = () => {
-  if (confirm('确定要清空所有聊天记录吗？')) {
-    localStorage.removeItem(`chat_history_${user.value.username}`)
-    chatHistory.value = []
-  }
-}
-
 // 心跳轮询
 let pollTimer = null
 const POLL_INTERVAL = 10 * 60 * 100
 
 const keepAuth = async () => {
   try {
-    const data = await chatApi.keepAuth(deviceInfo.value)
+    console.log('🔄 keepAuth 发送:', { deviceInfo: !!deviceInfo.value, location: cachedLocation })
+    const data = await chatApi.keepAuth({
+      deviceInfo: deviceInfo.value,
+      location: cachedLocation,
+    })
     score.value = data?.trustscore ?? score.value
     if (score.value < 0.4) {
       handleLogout()
@@ -265,7 +258,10 @@ const stopPolling = () => {
 }
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
+  // 获取地理位置（只获取一次，后续轮询复用）
+  cachedLocation = await getLocation()
+
   // 获取用户信息
   fetch('/api/me', { method: 'GET', credentials: 'include' })
     .then((r) => r.json())

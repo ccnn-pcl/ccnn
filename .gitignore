@@ -1,5 +1,9 @@
 # Build artifacts
 version.json
+VERSION.json
+BUILD_INFO.json
+build/
+dist/
 *.log
 *.tmp
 *.swp
@@ -17,6 +21,7 @@ Thumbs.db
 
 # Dependency directories
 node_modules/
+frontend/node_modules/
 __pycache__/
 *.pyc
 *.pyo

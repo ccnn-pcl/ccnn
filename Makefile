@@ -4,7 +4,7 @@ SHELL := /bin/bash
 # Each submodule's specific targets are invoked using `make -C` so
 # the subproject's own Makefile controls the steps.
 
-.PHONY: help all app-example frontend-docker agent-docker data_proxy-docker \
+.PHONY: help all core app-example frontend-docker agent-docker data_proxy-docker \
 security-docker internal-agent-docker medical-materials-docker surgical-docker triage-docker version
 
 # Git version information
@@ -15,6 +15,14 @@ GIT_DIRTY := $(shell git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
 BUILD_DATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo 'v0.0.0-$(GIT_COMMIT)')
 
+# Source mirrors can be overridden from the root make command, for example:
+# make agent-docker APT_MIRROR=mirrors.aliyun.com PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+APT_MIRROR ?= deb.debian.org
+APT_SECURITY_MIRROR ?= security.debian.org
+PIP_INDEX_URL ?= https://pypi.org/simple
+GOPROXY ?= https://proxy.golang.org,direct
+ALPINE_REPOSITORIES ?= https://dl-cdn.alpinelinux.org/alpine/v3.20/main https://dl-cdn.alpinelinux.org/alpine/v3.20/community
+
 # Copyright information
 COPYRIGHT_OWNER := $(shell git config user.name 2>/dev/null || echo 'unknown')
 COPYRIGHT_EMAIL := $(shell git config user.email 2>/dev/null || echo 'unknown')
@@ -22,7 +30,8 @@ COPYRIGHT_YEAR := $(shell date +%Y)
 
 help:
 	@echo "Root Makefile - available commands:"
-	@echo "  make all                - build all services (use -j for parallel, e.g. make -j4 all)"
+	@echo "  make all                - build core services and app examples"
+	@echo "  make core               - build core services (use -j for parallel, e.g. make -j4 core)"
 	@echo "  make frontend-docker    - build frontend docker image (runs 'docker-image')"
 	@echo "  make agent-docker       - build AI_Twin/agent (runs 'build')"
 	@echo "  make data_proxy-docker  - build data_proxy docker image (runs 'docker-build')"
@@ -82,49 +91,70 @@ agent-docker:
 		BUILD=$(GIT_COMMIT) \
 		BUILD_DATE=$(BUILD_DATE) \
 		GIT_BRANCH=$(GIT_BRANCH) \
-		GIT_COMMIT=$(GIT_COMMIT)
+		GIT_COMMIT=$(GIT_COMMIT) \
+		APT_MIRROR=$(APT_MIRROR) \
+		APT_SECURITY_MIRROR=$(APT_SECURITY_MIRROR) \
+		PIP_INDEX_URL=$(PIP_INDEX_URL)
 
 data_proxy-docker:
 	$(MAKE) -C AI_Twin/cybertwin/data_proxy docker-build \
 		BUILD_VERSION=$(VERSION) \
 		GIT_COMMIT=$(GIT_COMMIT) \
 		GIT_BRANCH=$(GIT_BRANCH) \
-		BUILD_TIME=$(BUILD_DATE)
+		BUILD_TIME=$(BUILD_DATE) \
+		GOPROXY=$(GOPROXY) \
+		ALPINE_REPOSITORIES="$(ALPINE_REPOSITORIES)"
 
 security-docker:
-	$(MAKE) -C AI_Twin/cybertwin/security_proxy build-all VERSION=$(VERSION)
+	$(MAKE) -C AI_Twin/cybertwin/security_proxy build-all \
+		VERSION=$(VERSION) \
+		APT_MIRROR=$(APT_MIRROR) \
+		APT_SECURITY_MIRROR=$(APT_SECURITY_MIRROR) \
+		PIP_INDEX_URL=$(PIP_INDEX_URL)
 
 internal-agent-docker:
 	$(MAKE) -C app_examples/intelligent_doctor/internal_agent docker-build \
 		VERSION=$(VERSION) \
 		GIT_COMMIT=$(GIT_COMMIT) \
-		BUILD_DATE=$(BUILD_DATE)
+		BUILD_DATE=$(BUILD_DATE) \
+		APT_MIRROR=$(APT_MIRROR) \
+		APT_SECURITY_MIRROR=$(APT_SECURITY_MIRROR) \
+		PIP_INDEX_URL=$(PIP_INDEX_URL)
 
 medical-materials-docker:
 	$(MAKE) -C app_examples/intelligent_doctor/medical_materials_service docker-build \
 		VERSION=$(VERSION) \
 		GIT_COMMIT=$(GIT_COMMIT) \
 		GIT_BRANCH=$(GIT_BRANCH) \
-		BUILD_TIME=$(BUILD_DATE)
+		BUILD_TIME=$(BUILD_DATE) \
+		GOPROXY=$(GOPROXY) \
+		ALPINE_REPOSITORIES="$(ALPINE_REPOSITORIES)"
 
 surgical-docker:
 	$(MAKE) -C app_examples/intelligent_doctor/surgical_agent docker-build \
 		BUILD_VERSION=$(VERSION) \
 		GIT_COMMIT=$(GIT_COMMIT) \
-		BUILD_TIME=$(BUILD_DATE)
+		BUILD_TIME=$(BUILD_DATE) \
+		APT_MIRROR=$(APT_MIRROR) \
+		APT_SECURITY_MIRROR=$(APT_SECURITY_MIRROR) \
+		PIP_INDEX_URL=$(PIP_INDEX_URL)
 
 triage-docker:
 	$(MAKE) -C app_examples/intelligent_doctor/triage_doctor_agent docker-build \
 		BUILD_VERSION=$(VERSION) \
 		GIT_COMMIT=$(GIT_COMMIT) \
-		BUILD_TIME=$(BUILD_DATE)
+		BUILD_TIME=$(BUILD_DATE) \
+		APT_MIRROR=$(APT_MIRROR) \
+		APT_SECURITY_MIRROR=$(APT_SECURITY_MIRROR) \
+		PIP_INDEX_URL=$(PIP_INDEX_URL)
 
 # ------------------ Aggregate targets ------------------
 
 .PHONY: images builds
 
 # Build all artifacts (binaries or images as defined per-module)
-all: frontend-docker agent-docker data_proxy-docker security-docker
+core: frontend-docker agent-docker data_proxy-docker security-docker
+all: core app-example
 app-example: internal-agent-docker medical-materials-docker surgical-docker triage-docker
 
 

@@ -1,196 +1,174 @@
 .PHONY: help install build docker-build docker-clean clean run test dev-run docker-run lint format _version_inject
 
-# 项目配置
+# project config
 PROJECT_NAME := internal-agent
-PYTHON_VERSION := 3.13
+PYTHON := python3
+PYTHON_VERSION := $(shell $(PYTHON) --version 2>/dev/null | cut -d' ' -f2 | cut -d'.' -f1,2)
 IMAGE_NAME := $(PROJECT_NAME)
 
-# 版本配置
+# version
 VERSION_FILE := src/version.py
-PYPROJECT_FILE := pyproject.toml
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-VERSION := $(shell grep "version = " $(PYPROJECT_FILE) | head -1 | sed 's/.*version = "//; s/".*//'; )
+VERSION := $(shell git describe --tags --always 2>/dev/null || echo "0.1.0")
 DOCKER_TAG := $(VERSION)
 
-# 虚拟环境配置
-VENV_DIR := .venv
-PYTHON := $(VENV_DIR)/bin/python
-PIP := $(VENV_DIR)/bin/pip
-PYTEST := $(VENV_DIR)/bin/pytest
-
-# 颜色输出
+# color output
 RED := \033[0;31m
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
 BLUE := \033[0;34m
 NC := \033[0m # No Color
 
-help: ## 显示帮助信息
-	@echo "$(BLUE)$(PROJECT_NAME) - Makefile 命令$(NC)"
+help: ## Show help information
+	@echo "$(BLUE)$(PROJECT_NAME) - Makefile commands$(NC)"
 	@echo ""
-	@echo "$(YELLOW)依赖管理:$(NC)"
-	@echo "  $(GREEN)make install$(NC)          - 安装项目依赖"
-	@echo "  $(GREEN)make install-dev$(NC)      - 安装开发依赖（包括测试依赖）"
+	@echo "$(YELLOW)Dependency management:$(NC)"
+	@echo "  $(GREEN)make install$(NC)          - Install project dependencies"
 	@echo ""
-	@echo "$(YELLOW)构建:$(NC)"
-	@echo "  $(GREEN)make build$(NC)            - 构建项目"
-	@echo "  $(GREEN)make docker-build$(NC)     - 构建Docker镜像"
-	@echo "  $(GREEN)make docker-push$(NC)      - 推送Docker镜像到仓库"
-	@echo "  $(GREEN)make docker-clean$(NC)     - 清理Docker镜像和容器"
+	@echo "$(YELLOW)Build:$(NC)"
+	@echo "  $(GREEN)make build$(NC)            - Build project"
+	@echo "  $(GREEN)make docker-build$(NC)     - Build Docker image"
+	@echo "  $(GREEN)make docker-push$(NC)      - Push Docker image to registry"
+	@echo "  $(GREEN)make docker-clean$(NC)     - Clean Docker images and containers"
 	@echo ""
-	@echo "$(YELLOW)运行:$(NC)"
-	@echo "  $(GREEN)make run$(NC)              - 运行应用（生产模式）"
-	@echo "  $(GREEN)make dev-run$(NC)          - 运行应用（开发模式，热重载）"
-	@echo "  $(GREEN)make docker-run$(NC)       - 运行Docker容器"
+	@echo "$(YELLOW)Run:$(NC)"
+	@echo "  $(GREEN)make run$(NC)              - Run application (production mode)"
+	@echo "  $(GREEN)make dev-run$(NC)          - Run application (dev mode, hot-reload)"
+	@echo "  $(GREEN)make docker-run$(NC)       - Run Docker container"
 	@echo ""
-	@echo "$(YELLOW)测试与质量:$(NC)"
-	@echo "  $(GREEN)make test$(NC)             - 运行测试"
-	@echo "  $(GREEN)make test-cov$(NC)         - 运行测试并生成覆盖率报告"
-	@echo "  $(GREEN)make lint$(NC)             - 代码检查"
-	@echo "  $(GREEN)make format$(NC)           - 代码格式化"
+	@echo "$(YELLOW)Test & quality:$(NC)"
+	@echo "  $(GREEN)make test$(NC)             - Run tests"
+	@echo "  $(GREEN)make test-cov$(NC)         - Run tests with coverage report"
+	@echo "  $(GREEN)make lint$(NC)             - Lint code"
+	@echo "  $(GREEN)make format$(NC)           - Format code"
 	@echo ""
-	@echo "$(YELLOW)维护:$(NC)"
-	@echo "  $(GREEN)make clean$(NC)            - 清理构建产物和缓存"
-	@echo "  $(GREEN)make clean-all$(NC)        - 深度清理（包括虚拟环境）"
-	@echo "  $(GREEN)make version$(NC)          - 显示版本信息"
+	@echo "$(YELLOW)Maintenance:$(NC)"
+	@echo "  $(GREEN)make clean$(NC)            - Clean build artifacts and caches"
+	@echo "  $(GREEN)make clean-all$(NC)        - Deep clean (including build caches)"
+	@echo "  $(GREEN)make version$(NC)          - Show version info"
 
 # ============================================================================
-# 虚拟环境设置
+# Dependency management
 # ============================================================================
 
-venv: ## 创建虚拟环境
-	@echo "$(BLUE)创建虚拟环境...$(NC)"
-	python$(PYTHON_VERSION) -m venv $(VENV_DIR)
-	$(PIP) install --upgrade pip
+install: ## Install dependencies
+	@echo "$(BLUE)Installing project dependencies...$(NC)"
+	$(PYTHON) -m pip install -q --break-system-packages -r requirements.txt
+	@echo "$(GREEN)✓ Dependencies installed$(NC)"
 
 # ============================================================================
-# 依赖管理
-# ============================================================================
-
-install: venv ## 安装依赖
-	@echo "$(BLUE)安装项目依赖...$(NC)"
-	$(PIP) install -q -r requirements.txt
-	@echo "$(GREEN)✓ 依赖安装完成$(NC)"
-
-install-dev: install ## 安装开发依赖
-	@echo "$(BLUE)安装开发依赖...$(NC)"
-	$(PIP) install -q -e ".[test]"
-	@echo "$(GREEN)✓ 开发依赖安装完成$(NC)"
-
-# ============================================================================
-# 版本管理与注入
+# Version management & injection
 # ============================================================================
 
 _version_inject:
-	@echo "$(BLUE)注入版本信息...$(NC)"
+	@echo "$(BLUE)Injecting version info...$(NC)"
 	@mkdir -p $$(dirname $(VERSION_FILE))
 	@scripts/inject_version.sh "$(VERSION)" "$(GIT_COMMIT)" "$(BUILD_DATE)" "$(VERSION_FILE)"
-	@echo "$(GREEN)✓ 版本信息已注入: $(VERSION_FILE)$(NC)"
-	@echo "  版本: $(GREEN)$(VERSION)$(NC)"
-	@echo "  提交: $(GREEN)$(GIT_COMMIT)$(NC)"
+	@echo "$(GREEN)✓ Version info injected: $(VERSION_FILE)$(NC)"
+	@echo "  Version: $(GREEN)$(VERSION)$(NC)"
+	@echo "  Commit: $(GREEN)$(GIT_COMMIT)$(NC)"
 
-version: ## 显示版本信息
-	@echo "$(BLUE)版本信息:$(NC)"
-	@echo "  项目版本: $(GREEN)$(VERSION)$(NC)"
-	@echo "  Git提交: $(GREEN)$(GIT_COMMIT)$(NC)"
-	@echo "  构建时间: $(GREEN)$(BUILD_DATE)$(NC)"
-
+version: ## Show version info
+	@echo "$(BLUE)Version info:$(NC)"
+	@echo "  Project version: $(GREEN)$(VERSION)$(NC)"
+	@echo "  Git commit: $(GREEN)$(GIT_COMMIT)$(NC)"
+	@echo "  Build date: $(GREEN)$(BUILD_DATE)$(NC)"
 
 # ============================================================================
-# 构建
+# Build
 # ============================================================================
 
-build: _version_inject ## 构建项目
-	@echo "$(BLUE)构建项目...$(NC)"
+build: _version_inject ## Build project
+	@echo "$(BLUE)Building project...$(NC)"
 	$(PYTHON) -m py_compile src/main.py
-	@echo "$(GREEN)✓ 项目构建完成$(NC)"
+	@echo "$(GREEN)✓ Project built$(NC)"
 
 # ============================================================================
-# Docker 构建
+# Docker build
 # ============================================================================
 
-docker-build: _version_inject ## 构建Docker镜像
-	@echo "$(BLUE)构建Docker镜像: $(IMAGE_NAME):$(DOCKER_TAG)$(NC)"
+docker-build: _version_inject ## Build Docker image
+	@echo "$(BLUE)Building Docker image: $(IMAGE_NAME):$(DOCKER_TAG)$(NC)"
 	docker build \
 		-t $(IMAGE_NAME):$(DOCKER_TAG) \
 		-t $(IMAGE_NAME):$(VERSION) \
 		.
-	@echo "$(GREEN)✓ Docker镜像构建完成$(NC)"
-	@echo "  镜像: $(GREEN)$(IMAGE_NAME):$(DOCKER_TAG)$(NC)"
-	@echo "  标签: $(GREEN)$(IMAGE_NAME):$(VERSION)$(NC)"
+	@echo "$(GREEN)✓ Docker image built$(NC)"
+	@echo "  Image: $(GREEN)$(IMAGE_NAME):$(DOCKER_TAG)$(NC)"
+	@echo "  Tag: $(GREEN)$(IMAGE_NAME):$(VERSION)$(NC)"
 
-docker-clean: ## 清理Docker镜像和容器
-	@echo "$(BLUE)清理Docker镜像和容器...$(NC)"
-	@echo "  停止相关容器..."
+docker-clean: ## Clean Docker images and containers
+	@echo "$(BLUE)Cleaning Docker images and containers...$(NC)"
+	@echo "  Stopping related containers..."
 	@docker ps -a --filter "ancestor=$(IMAGE_NAME)" -q | xargs -r docker stop 2>/dev/null || true
-	@echo "  删除相关容器..."
+	@echo "  Removing related containers..."
 	@docker ps -a --filter "ancestor=$(IMAGE_NAME)" -q | xargs -r docker rm 2>/dev/null || true
-	@echo "  删除镜像..."
+	@echo "  Removing images..."
 	@docker images | grep "$(PROJECT_NAME)" | awk '{print $$3}' | xargs -r docker rmi -f 2>/dev/null || true
-	@echo "$(GREEN)✓ Docker清理完成$(NC)"
+	@echo "$(GREEN)✓ Docker cleanup done$(NC)"
 
 # ============================================================================
-# 运行
+# Run
 # ============================================================================
 
-run: ## 运行应用（生产模式）
-	@echo "$(BLUE)启动应用...$(NC)"
+run: ## Run application (production mode)
+	@echo "$(BLUE)Starting application...$(NC)"
 	$(PYTHON) -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --log-level info
 
-dev-run: ## 运行应用（开发模式，热重载）
-	@echo "$(BLUE)启动应用（开发模式）...$(NC)"
+dev-run: ## Run application (dev mode, hot-reload)
+	@echo "$(BLUE)Starting application (dev mode)...$(NC)"
 	$(PYTHON) -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload --log-level debug
 
-docker-run: ## 运行Docker容器
-	@echo "$(BLUE)启动Docker容器...$(NC)"
+docker-run: ## Run Docker container
+	@echo "$(BLUE)Starting Docker container...$(NC)"
 	docker run -it --rm \
 		-p 8000:8000 \
 		--name $(PROJECT_NAME) \
 		$(IMAGE_NAME):$(DOCKER_TAG)
 
 # ============================================================================
-# 测试
+# Tests
 # ============================================================================
 
-test: install-dev ## 运行测试
-	@echo "$(BLUE)运行测试...$(NC)"
-	$(PYTEST) tests/ -v --tb=short
-	@echo "$(GREEN)✓ 测试完成$(NC)"
+test: ## Run tests
+	@echo "$(BLUE)Running tests...$(NC)"
+	$(PYTHON) -m pytest tests/ -v --tb=short
+	@echo "$(GREEN)✓ Tests completed$(NC)"
 
-test-cov: install-dev ## 运行测试并生成覆盖率报告
-	@echo "$(BLUE)运行测试（含覆盖率）...$(NC)"
-	$(PYTEST) tests/ -v --cov=src --cov-report=html --cov-report=term-missing
-	@echo "$(GREEN)✓ 覆盖率报告已生成: htmlcov/index.html$(NC)"
+test-cov: ## Run tests with coverage report
+	@echo "$(BLUE)Running tests (with coverage)...$(NC)"
+	$(PYTHON) -m pytest tests/ -v --cov=src --cov-report=html --cov-report=term-missing
+	@echo "$(GREEN)✓ Coverage report generated: htmlcov/index.html$(NC)"
 
 # ============================================================================
-# 代码质量
+# Code quality
 # ============================================================================
 
-lint: install-dev ## 代码检查
-	@echo "$(BLUE)运行代码检查...$(NC)"
+lint: ## Lint code
+	@echo "$(BLUE)Running linter...$(NC)"
 	@if command -v pylint &> /dev/null; then \
 		pylint src/ --disable=all --enable=E,F || true; \
 	else \
-		echo "$(YELLOW)pylint 未安装，跳过检查$(NC)"; \
+		echo "$(YELLOW)pylint not found, skipping$(NC)"; \
 	fi
-	@echo "$(GREEN)✓ 代码检查完成$(NC)"
+	@echo "$(GREEN)✓ Lint completed$(NC)"
 
-format: ## 代码格式化
-	@echo "$(BLUE)格式化代码...$(NC)"
+format: ## Format code
+	@echo "$(BLUE)Formatting code...$(NC)"
 	@if command -v black &> /dev/null; then \
 		black src/ tests/; \
-		echo "$(GREEN)✓ 使用 black 格式化完成$(NC)"; \
+		echo "$(GREEN)✓ Formatted with black$(NC)"; \
 	else \
-		echo "$(YELLOW)black 未安装，跳过格式化$(NC)"; \
+		echo "$(YELLOW)black not found, skipping$(NC)"; \
 	fi
 
 # ============================================================================
-# 清理
+# Cleanup
 # ============================================================================
 
-clean: ## 清理构建产物和缓存
-	@echo "$(BLUE)清理构建产物...$(NC)"
+clean: ## Clean build artifacts and caches
+	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".coverage" -exec rm -rf {} + 2>/dev/null || true
@@ -199,13 +177,12 @@ clean: ## 清理构建产物和缓存
 	find . -type f -name ".coverage" -delete 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	find . -type f -name "*.pyo" -delete 2>/dev/null || true
-	@echo "$(GREEN)✓ 清理完成$(NC)"
+	@echo "$(GREEN)✓ Cleanup done$(NC)"
 
-clean-all: clean ## 深度清理（包括虚拟环境和缓存）
-	@echo "$(BLUE)深度清理...$(NC)"
-	rm -rf $(VENV_DIR)
-	rm -rf build dist .eggs
-	@echo "$(GREEN)✓ 深度清理完成$(NC)"
+clean-all: clean ## Deep clean (including build caches)
+	@echo "$(BLUE)Deep cleaning...$(NC)"
+	rm -rf build dist
+	@echo "$(GREEN)✓ Deep clean done$(NC)"
 
-# 默认目标
+# Default target
 .DEFAULT_GOAL := help

@@ -1,12 +1,12 @@
-ARG ALPINE_MIRROR=https://dl-cdn.alpinelinux.org/alpine/v3.20
-ARG GOPROXY
-
 FROM golang:1.23.0-alpine AS builder
 
-ARG ALPINE_MIRROR
+ARG ALPINE_REPOSITORIES=https://dl-cdn.alpinelinux.org/alpine/v3.20/main https://dl-cdn.alpinelinux.org/alpine/v3.20/community
 ARG GOPROXY
+ARG VERSION
+ARG GIT_COMMIT
+ARG GIT_BRANCH
 
-RUN echo -e "${ALPINE_MIRROR}/main\n${ALPINE_MIRROR}/community" > /etc/apk/repositories && \
+RUN printf "%s\n" ${ALPINE_REPOSITORIES} > /etc/apk/repositories && \
     apk update && \
     apk add --no-cache \
     gcc \
@@ -27,13 +27,14 @@ COPY go.mod go.sum ./
 
 COPY . .
 
+
 RUN go build -ldflags="-linkmode=external -X 'github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/config.Version=${VERSION:-0.1.0}' -X 'github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/config.BuildTime=$(date -u '+%Y-%m-%d_%H:%M:%S')' -X 'github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/config.GitCommit=${GIT_COMMIT:-unknown}' -X 'github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/config.GitBranch=${GIT_BRANCH:-unknown}'" -o /app/server ./cmd/server
 
 FROM alpine:3.20
 
-ARG ALPINE_MIRROR
+ARG ALPINE_REPOSITORIES=https://dl-cdn.alpinelinux.org/alpine/v3.20/main https://dl-cdn.alpinelinux.org/alpine/v3.20/community
 
-RUN echo -e "${ALPINE_MIRROR}/main\n${ALPINE_MIRROR}/community" > /etc/apk/repositories && \
+RUN printf "%s\n" ${ALPINE_REPOSITORIES} > /etc/apk/repositories && \
     apk update && \
     apk add --no-cache \
     ca-certificates \

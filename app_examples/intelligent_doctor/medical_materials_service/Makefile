@@ -2,40 +2,25 @@
 # Go project build and development tools
 
 # Project info
-PROJECT_NAME := medical_materials
 MODULE_NAME := github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service
-VERSION ?= 0.1.0
-BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME := $(shell date -u '+%Y-%m-%d_%H:%M:%S')
+BUILD_DATE := $(shell date -u '+%Y%m%d')
+
+VERSION := $(shell git describe --tags --exact-match 2>/dev/null || echo "$(GIT_COMMIT)-$(BUILD_DATE)")
 
 # Docker-related configuration
-DOCKER_REGISTRY ?= 
-DOCKER_NAMESPACE ?= 
-# Docker image name must be all lowercase
+DOCKER_REGISTRY ?=
+DOCKER_NAMESPACE ?=
 DOCKER_IMAGE_NAME := medical-materials
-DOCKER_IMAGE_TAG := $(VERSION)
 DOCKER_IMAGE_FULL_NAME := $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/$(if $(DOCKER_NAMESPACE),$(DOCKER_NAMESPACE)/)$(DOCKER_IMAGE_NAME),$(DOCKER_IMAGE_NAME))
-ALPINE_MIRROR ?=
+ALPINE_REPOSITORIES ?= "https://dl-cdn.alpinelinux.org/alpine/v3.20/main https://dl-cdn.alpinelinux.org/alpine/v3.20/community"
 GOPROXY ?=
-
-# Go-related configuration
-GO := go
-GO_BUILD := $(GO) build
-GO_TEST := $(GO) test
-GO_CLEAN := $(GO) clean
-GO_MOD := $(GO) mod
-GO_FMT := $(GO) fmt
-GO_VET := $(GO) vet
-GO_TIDY := $(GO) mod tidy
 
 # Build directories
 BIN_DIR := bin
-DIST_DIR := dist
-
-# Output files
-BINARY_NAME := medical-materials-mcp-service
-BINARY_PATH := $(BIN_DIR)/$(BINARY_NAME)
+BINARY_PATH := $(BIN_DIR)/medical-materials-mcp-service
 
 # Build flags
 LDFLAGS := -ldflags "\\\
@@ -79,25 +64,25 @@ $(BIN_DIR):
 .PHONY: deps
 deps:
 	@echo "Downloading dependencies..."
-	$(GO_MOD) download
+	go mod download
 
 # Tidy dependencies
 .PHONY: tidy
 tidy:
 	@echo "Tidying go.mod dependencies..."
-	$(GO_TIDY)
+	go mod tidy
 
 # Format source code
 .PHONY: fmt
 fmt:
 	@echo "Formatting source code..."
-	$(GO_FMT) ./...
+	go fmt ./...
 
 # Static code analysis
 .PHONY: vet
 vet:
 	@echo "Running go vet..."
-	$(GO_VET) ./...
+	go vet ./...
 
 # Build the project
 .PHONY: build
@@ -107,7 +92,7 @@ build: $(BIN_DIR)
 	@echo "Commit: $(GIT_COMMIT)"
 	@echo "Branch: $(GIT_BRANCH)"
 	@echo "Time: $(BUILD_TIME)"
-	$(GO_BUILD) $(LDFLAGS) -o $(BINARY_PATH) ./cmd/server
+	go build $(LDFLAGS) -o $(BINARY_PATH) ./cmd/server
 	@echo "Build complete: $(BINARY_PATH)"
 
 # Run the project
@@ -120,22 +105,22 @@ run: build
 .PHONY: test
 test:
 	@echo "Running tests..."
-	$(GO_TEST) -v ./...
+	go test -v ./...
 
 # Run tests with coverage report
 .PHONY: test-cover
 test-cover:
 	@echo "Running tests with coverage report..."
-	$(GO_TEST) -coverprofile=coverage.out ./...
-	$(GO) tool cover -html=coverage.out -o coverage.html
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
 
 # Clean build artifacts
 .PHONY: clean
 clean:
 	@echo "Cleaning build artifacts..."
-	$(GO_CLEAN)
-	@rm -rf $(BIN_DIR) $(DIST_DIR)
+	go clean
+	@rm -rf $(BIN_DIR)
 	@rm -f coverage.out coverage.html
 	@echo "Clean complete"
 
@@ -145,18 +130,18 @@ clean:
 .PHONY: docker-build
 docker-build:
 	@echo "Building Docker image..."
-	@echo "Image name: $(DOCKER_IMAGE_FULL_NAME):$(DOCKER_IMAGE_TAG)"
+	@echo "Image name: $(DOCKER_IMAGE_FULL_NAME):$(VERSION)"
 	docker build \
 		--network=host \
 		--build-arg VERSION=$(VERSION) \
 		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
 		--build-arg GIT_BRANCH=$(GIT_BRANCH) \
-		$(if $(ALPINE_MIRROR),--build-arg ALPINE_MIRROR=$(ALPINE_MIRROR)) \
+		$(if $(ALPINE_REPOSITORIES),--build-arg ALPINE_REPOSITORIES=$(ALPINE_REPOSITORIES)) \
 		$(if $(GOPROXY),--build-arg GOPROXY=$(GOPROXY)) \
-		-t $(DOCKER_IMAGE_FULL_NAME):$(DOCKER_IMAGE_TAG) \
+		-t $(DOCKER_IMAGE_FULL_NAME):$(VERSION) \
 		.
 	@echo "Image build complete:"
-	@echo "  $(DOCKER_IMAGE_FULL_NAME):$(DOCKER_IMAGE_TAG)"
+	@echo "  $(DOCKER_IMAGE_FULL_NAME):$(VERSION)"
 
 # Clean Docker images and containers
 .PHONY: docker-clean
@@ -173,13 +158,14 @@ docker-clean:
 # Show version info
 .PHONY: version
 version:
-	@echo "Project: $(PROJECT_NAME)"
+	@echo "Project: medical_materials"
 	@echo "Module: $(MODULE_NAME)"
 	@echo "Version: $(VERSION)"
 	@echo "Commit: $(GIT_COMMIT)"
 	@echo "Branch: $(GIT_BRANCH)"
 	@echo "Time: $(BUILD_TIME)"
-	@echo "Docker image: $(DOCKER_IMAGE_FULL_NAME):$(DOCKER_IMAGE_TAG)"
+	@echo "Date: $(BUILD_DATE)"
+	@echo "Docker image: $(DOCKER_IMAGE_FULL_NAME):$(VERSION)"
 
 # Default target
 .DEFAULT_GOAL := help

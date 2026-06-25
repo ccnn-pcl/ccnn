@@ -1,0 +1,182 @@
+# datamodel deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datainfer-deployment  # Deployment名称
+  namespace: abacmodel       # 部署到matchmodel命名空间
+  labels:
+    app: datainfer-service    # 标签，用于匹配Service和Pod
+spec:
+  replicas: 1                 # 初始副本数（高可用）
+  selector:
+    matchLabels:
+      app: datainfer-service
+  strategy:
+    rollingUpdate:
+      maxSurge: 1             # 滚动更新时最多新增1个Pod
+      maxUnavailable: 0       # 更新过程中不允许服务不可用
+  template:
+    metadata:
+      labels:
+        app: datainfer-service
+    spec:
+      # 安全上下文：非root用户运行
+      nodeSelector:
+        app: abacmodel
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: datainfer-container
+        image: datamodel:v1.0  # 镜像名称（与构建时一致）
+        imagePullPolicy: IfNotPresent  # 优先使用本地镜像，无则拉取仓库
+        ports:
+        - containerPort: 8000      # 容器内服务端口
+        # 资源限制：避免资源争抢
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "1000m"
+        # 就绪探针：确认Pod可接收请求
+        readinessProbe:
+          httpGet:
+            path: /health  # 健康检查接口
+            port: 8000
+          initialDelaySeconds: 30  # 启动后延迟10s检查
+          periodSeconds: 5         # 每5s检查一次
+        # 存活探针：确认Pod存活，故障时重启
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 10
+---
+# 集群内服务发现：Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: datainfer-service
+  namespace: abacmodel
+spec:
+  selector:
+    app: datainfer-service  # 关联上面的Deployment
+  ports:
+  - port: 80                # Service暴露端口
+    targetPort: 8000        # 映射到容器的8000端口
+  type: ClusterIP           # 仅集群内访问（外部可通过port-forward）
+---
+
+# matchmodel deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: matchinfer-deployment  # Deployment 名称
+  namespace: abacmodel
+  labels:
+    app: matchinfer  # 标签，用于和 Service 关联
+spec:
+  replicas: 1  # 启动 1 个 Pod 实例（可根据需求调整）
+  selector:
+    matchLabels:
+      app: matchinfer  # 匹配 Pod 的标签
+  template:
+    metadata:
+      labels:
+        app: matchinfer  # Pod 标签，需和 selector 一致
+    spec:
+      nodeSelector:
+        app: abacmodel
+      containers:
+      - name: matchinfer-container  # 容器名称
+        image: matchmodel:v1.0  # 你的镜像名（需确保集群内节点能拉取到）
+        # 关键：若镜像是本地构建（未推送到仓库），需在每个节点手动加载，或设置 imagePullPolicy: Never
+        imagePullPolicy: IfNotPresent  # 优先使用本地镜像，没有再拉取（本地测试推荐）
+        ports:
+        - containerPort: 8000  # 容器内服务端口（和 FastAPI 启动端口一致）
+        # 可选：资源限制（避免资源占用过高）
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+# Service：集群内访问入口（ClusterIP 类型，仅集群内可见）
+apiVersion: v1
+kind: Service
+metadata:
+  name: matchinfer-service  # Service 名称（集群内访问时用这个名字）
+  namespace: abacmodel
+spec:
+  selector:
+    app: matchinfer  # 关联上面 Deployment 的 Pod 标签
+  ports:
+  - port: 8000  # Service 暴露的端口（集群内访问时用这个端口）
+    targetPort: 8000  # 映射到 Pod 内的端口（和 containerPort 一致）
+  type: ClusterIP  # 集群内访问类型（默认，无需修改）
+---
+
+# usermodel deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-trust-deployment  # 部署名称，可自定义
+  namespace: abacmodel        # 目标命名空间，需提前存在
+  labels:
+    app: user-trust-service    # 标签，与Service匹配
+spec:
+  replicas: 1                  # 初始1个副本
+  selector:
+    matchLabels:
+      app: user-trust-service  # 选择器，匹配Pod标签
+  strategy:
+    rollingUpdate:
+      maxSurge: 1              # 滚动更新时最多多启1个Pod
+      maxUnavailable: 0        # 更新时不允许不可用Pod
+  template:
+    metadata:
+      labels:
+        app: user-trust-service  # Pod标签，与selector匹配
+    spec:
+      nodeSelector:
+        app: abacmodel
+      # 关键：关闭非root限制（原镜像未设置/app目录权限为1000，否则会报权限拒绝）
+      # 风险：容器内用root用户运行，安全性降低；若必须非root，需修改Docker镜像（添加chown命令）
+      securityContext:
+        runAsNonRoot: false    # 允许root用户运行（原镜像默认root）
+        # 注释掉原非root配置，避免权限冲突
+        # runAsUser: 1000
+        # fsGroup: 1000
+      containers:
+      - name: user-trust-container  # 容器名称
+        image: usermodel-trust-eval:v1.0   # 你的原有Docker镜像（无需修改）
+        imagePullPolicy: IfNotPresent  # 本地有镜像则不拉取（单节点集群适用）
+        ports:
+        - containerPort: 8000        # 容器内服务端口（FastAPI默认8000）
+        # 关键：扩容资源（5G镜像+模型加载，2Gi易OOM，建议不低于4Gi）
+        resources:
+          requests:
+            memory: "2Gi"       # 调度时请求的最小内存
+            cpu: "1000m"        # 调度时请求的最小CPU（1核）
+          limits:
+            memory: "4Gi"       # 内存上限（避免模型加载OOM）
+            cpu: "2000m"        # CPU上限（应对推理计算）
+        # 关键：删除探针（原镜像无/health接口，且不修改代码）
+        # 风险：服务崩溃无法自动重启，滚动更新可能丢请求，需手动监控
+---
+# Service：集群内访问API服务
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-trust-service    # Service名称
+  namespace: abacmodel
+spec:
+  selector:
+    app: user-trust-service  # 匹配Deployment的Pod标签
+  ports:
+  - port: 80                 # Service暴露端口（集群内用80访问）
+    targetPort: 8000         # 映射到容器内8000端口（与容器端口一致）
+  type: ClusterIP            # 仅集群内访问（需外部访问可改NodePort）

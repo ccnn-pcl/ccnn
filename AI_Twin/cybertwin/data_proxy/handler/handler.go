@@ -18,8 +18,8 @@ package handler
 import (
 	"context"
 
-	"git.pcl.ac.cn/CN/Cybertwin-DataProxy/logger"
-	"git.pcl.ac.cn/CN/Cybertwin-DataProxy/query"
+	"github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/logger"
+	"github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/query"
 )
 
 type DataHandler struct {

@@ -23,11 +23,11 @@ import (
 	"net/http"
 	"os"
 
-	verifier "git.pcl.ac.cn/CN/Cybertwin-DataProxy/auth"
-	"git.pcl.ac.cn/CN/Cybertwin-DataProxy/config"
-	"git.pcl.ac.cn/CN/Cybertwin-DataProxy/db"
-	"git.pcl.ac.cn/CN/Cybertwin-DataProxy/internal/tools"
-	"git.pcl.ac.cn/CN/Cybertwin-DataProxy/logger"
+	verifier "github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/auth"
+	"github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/config"
+	"github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/db"
+	"github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/internal/tools"
+	"github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/logger"
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

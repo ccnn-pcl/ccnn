@@ -18,8 +18,8 @@ package tools
 import (
 	"context"
 
-	"git.pcl.ac.cn/CN/Cybertwin-DataProxy/handler"
-	"git.pcl.ac.cn/CN/Cybertwin-DataProxy/logger"
+	"github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/handler"
+	"github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/logger"
 	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

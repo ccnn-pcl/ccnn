@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"time"
 
-	"git.pcl.ac.cn/CN/Cybertwin-DataProxy/logger"
+	"github.com/ccnn-pcl/ccnn/AI_Twin/cybertwin/data_proxy/logger"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/modelcontextprotocol/go-sdk/auth"
 )

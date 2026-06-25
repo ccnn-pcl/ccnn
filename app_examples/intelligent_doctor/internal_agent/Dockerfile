@@ -2,6 +2,9 @@ FROM python:3.10-slim
 
 # pip 镜像源，构建时可覆盖：--build-arg PIP_INDEX_URL=https://pypi.org/simple/
 ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+ARG BUILD_VERSION
+ARG GIT_COMMIT
+ARG BUILD_TIME
 
 WORKDIR /app
 
@@ -15,26 +18,7 @@ RUN mkdir -p /app/src/shared /app/data/backups
 
 COPY ./src /app/src
 COPY ./scripts /app/scripts
-RUN rm -f src/version.py && \
-    echo "__version__ = '${BUILD_VERSION}'" > src/version.py && \
-    echo "__major__ = $(echo ${BUILD_VERSION} | cut -d. -f1)" >> src/version.py && \
-    echo "__minor__ = $(echo ${BUILD_VERSION} | cut -d. -f2)" >> src/version.py && \
-    echo "__patch__ = $(echo ${BUILD_VERSION} | cut -d. -f3)" >> src/version.py && \
-    echo "__git_commit__ = '${GIT_COMMIT}'" >> src/version.py && \
-    echo "__build_time__ = '${BUILD_TIME}'" >> src/version.py && \
-    echo "" >> src/version.py && \
-    echo "def get_version() -> str:" >> src/version.py && \
-    echo "    return __version__" >> src/version.py && \
-    echo "" >> src/version.py && \
-    echo "def get_version_info() -> dict:" >> src/version.py && \
-    echo "    return {" >> src/version.py && \
-    echo "        \"version\": __version__," >> src/version.py && \
-    echo "        \"major\": __major__," >> src/version.py && \
-    echo "        \"minor\": __minor__," >> src/version.py && \
-    echo "        \"patch\": __patch__," >> src/version.py && \
-    echo "        \"build_time\": __build_time__," >> src/version.py && \
-    echo "        \"git_commit\": __git_commit__," >> src/version.py && \
-    echo "    }" >> src/version.py
+RUN python scripts/inject_version.py "${BUILD_VERSION}" "${GIT_COMMIT}" "${BUILD_TIME}"
 
 RUN mkdir -p /app/data/BJ/BJ001 /app/data/SH/SH001 /app/data/backups
 

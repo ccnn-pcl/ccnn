@@ -8,10 +8,10 @@ IMAGE_NAME := $(PROJECT_NAME)
 PIP_INDEX_URL ?= https://mirrors.aliyun.com/pypi/simple/
 
 # version
-VERSION_FILE := src/version.py
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-VERSION := $(shell git describe --tags --always 2>/dev/null || echo "0.1.0")
+BUILD_DATE_SHORT := $(shell date -u +'%Y%m%d')
+VERSION := $(shell git describe --tags --exact-match 2>/dev/null || echo "$(GIT_COMMIT)-$(BUILD_DATE_SHORT)")
 DOCKER_TAG := $(VERSION)
 
 # color output
@@ -85,6 +85,9 @@ docker-build: ## Build Docker image (override: PIP_INDEX_URL=https://pypi.org/si
 	@echo "$(BLUE)Building Docker image: $(IMAGE_NAME):$(DOCKER_TAG)$(NC)"
 	docker build \
 		--build-arg PIP_INDEX_URL=$(PIP_INDEX_URL) \
+		--build-arg BUILD_VERSION=$(VERSION) \
+		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
+		--build-arg BUILD_TIME=$(BUILD_DATE) \
 		-t $(IMAGE_NAME):$(DOCKER_TAG) \
 		.
 	@echo "$(GREEN)✓ Docker image built$(NC)"

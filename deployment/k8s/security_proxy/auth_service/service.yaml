@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  selector:
+    app: auth-service
+  ports:
+  - port: 80  # 集群内部访问端口
+    targetPort: 8000  # 容器端口
+  type: ClusterIP  # 仅集群内部访问（如需外部访问，改为NodePort或LoadBalancer）

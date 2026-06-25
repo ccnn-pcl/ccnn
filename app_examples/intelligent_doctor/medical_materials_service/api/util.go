@@ -25,9 +25,9 @@ import (
 	"strings"
 	"time"
 
-	"git.pcl.ac.cn/CN/MedicalMaterialsMcpService/api/model"
-	dbModel "git.pcl.ac.cn/CN/MedicalMaterialsMcpService/db/model"
-	"git.pcl.ac.cn/CN/MedicalMaterialsMcpService/logger"
+	"github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/api/model"
+	dbModel "github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/db/model"
+	"github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/logger"
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/minio/minio-go/v7"
 )

@@ -34,7 +34,8 @@ logs/
 .vscode/
 
 # Intellij
-.idea/ 
+.idea/
 
 # MCP Inspector config
 mcp-server-config.json
+bin

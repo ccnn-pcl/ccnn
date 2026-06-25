@@ -23,12 +23,12 @@ import (
 	"net/http"
 	"os"
 
-	verifier "git.pcl.ac.cn/CN/MedicalMaterialsMcpService/auth"
-	"git.pcl.ac.cn/CN/MedicalMaterialsMcpService/config"
-	"git.pcl.ac.cn/CN/MedicalMaterialsMcpService/db"
-	"git.pcl.ac.cn/CN/MedicalMaterialsMcpService/internal/resource"
-	"git.pcl.ac.cn/CN/MedicalMaterialsMcpService/internal/tools"
-	"git.pcl.ac.cn/CN/MedicalMaterialsMcpService/logger"
+	verifier "github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/auth"
+	"github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/config"
+	"github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/db"
+	"github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/internal/resource"
+	"github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/internal/tools"
+	"github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/logger"
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )

@@ -19,9 +19,9 @@ import (
 	"context"
 	"fmt"
 
-	handler "git.pcl.ac.cn/CN/MedicalMaterialsMcpService/api"
-	apiModel "git.pcl.ac.cn/CN/MedicalMaterialsMcpService/api/model"
-	"git.pcl.ac.cn/CN/MedicalMaterialsMcpService/logger"
+	handler "github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/api"
+	apiModel "github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/api/model"
+	"github.com/ccnn-pcl/ccnn/app_examples/intelligent_doctor/medical_materials_service/logger"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/yosida95/uritemplate/v3"

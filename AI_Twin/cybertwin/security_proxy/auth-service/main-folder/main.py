@@ -1,16 +1,3 @@
-# Copyright (c) 2026 PCL-CCNN
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, constr
 from typing import Literal, Optional, Dict, List
@@ -40,6 +27,13 @@ v1 = client.CoreV1Api()
 # ------------------------------
 # 常量配置（新增JWT验证服务地址）
 # ------------------------------
+# BIGMODEL_API_KEY = "157c126907844cddac1f17580e89ef46.jIhIIurvUwI6btYV"
+# BIGMODEL_CHAT_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+# BIGMODEL_MODEL = "glm-5.1"
+
+LOCAL_LLM_CHAT_URL = "http://192.168.64.60:32568/v1/chat/completions"
+LOCAL_LLM_MODEL = "qwen-3b"
+
 NAMESPACE = "cybertwin"  # 与模型服务同一命名空间
 # ConfigMap名称（K8s中存储配置的资源名）
 APP_ROLE_CM = "app-role-config"       # 应用→角色映射
@@ -48,7 +42,7 @@ COMMON_DEVICE_CM = "common-device-config"  # 常用设备列表
 IP_LOCATION_CM = "ip-location-config" # IP→地点映射
 IP_ACCESS_SCORE_CM = "ip-access-score-config" # IP→接入得分映射
 # 新增：JWT验证服务地址（按你提供的配置）
-JWT_VERIFY_URL = "http://cybertwin-backend.cybertwin.svc.cluster.local:5000/jwt/verify"
+JWT_VERIFY_URL =  "http://cybertwin-backend.cybertwin.svc.cluster.local:5000/jwt/verify"
 # 模型调用地址（保持不变）
 SENSITIVITY_MODEL_URL = "http://datainfer-service.abacmodel:80/predict_sensitivity"
 MATCH_MODEL_URL = "http://matchinfer-service.abacmodel.svc.cluster.local:8000/predict"
@@ -105,6 +99,11 @@ pswdold: float = 0.0  # 上次密码登录的pswd值（初始默认0.0）
 bioold: float = 0.0   # 上次生物登录的bio值（初始默认0.0）
 timegap_pswd: int = 0  # 密码登录时间差（分钟，四舍五入后）
 timegap_bio: int = 0  # 生物登录时间差（分钟，四舍五入后）
+
+# ====================== 仅新增：授权拒绝次数统计 ======================
+deny_count: int = 0
+deny_count2: int = 0
+# ====================================================================
 
 # ------------------------------
 # 请求/响应数据模型（核心修改 + 新增mac/imsi请求模型）
@@ -190,6 +189,22 @@ def parse_json_config(cm_name: str, key: str) -> Dict:
     except json.JSONDecodeError:
         raise HTTPException(status_code=500, detail=f"ConfigMap[{cm_name}][{key}]格式错误（需JSON）")
 
+
+def parse_sensitivity_level(model_answer: str) -> float | None:
+    """
+    从模型回答中提取敏感度等级数字，只接受1-5。
+    例如：'5'、'5级'、'等级：5' 都可以解析为 5.0。
+    """
+    if not model_answer:
+        return None
+
+    match = re.search(r"[1-5]", model_answer)
+    if not match:
+        return None
+
+    return float(match.group())
+
+
 # ------------------------------
 # 新增：辅助函数 - 从ConfigMap中提取白名单列表（核心新增）
 # ------------------------------
@@ -230,91 +245,160 @@ def get_whitelist_from_cm(cm_name: str, key: str = "whitelist") -> List[str]:
 
 # ------------------------------
 # 核心接口实现（核心修改 + 新增mac/imsi校验接口）
-# ------------------------------
+
 @app.post("/auth/app-role", response_model=AuthResponse, summary="应用-角色-权限授权")
 async def app_role_auth(request: AppAuthRequest):
     """逻辑：应用名称→角色→权限，判断是否允许操作数据"""
+    # 🔥 核心修复：仅在函数最开头声明1次全局变量
+    global deny_count2
+
+    # 记录请求开始
+    logger.info(f"开始处理应用授权请求 - 应用名: {request.app_name}, 数据类型: {request.data_type}, 操作类型: {request.operation_type}")
+    
     # 1. 应用→角色（ConfigMap: app-role-config，key=应用名，value=角色名）
     app_role_data = get_configmap(APP_ROLE_CM)
     role = app_role_data.get(request.app_name)
-    if not role:
-        return AuthResponse(result="deny", message=f"应用[{request.app_name}]未配置角色")
+    logger.info(f"从配置中获取应用[{request.app_name}]对应的角色: {role}")
     
-    # 2. 角色→权限（ConfigMap: role-perm-config，key=角色名，value=JSON{"数据类型": ["操作列表"]}）
+    if not role:
+        deny_msg = f"应用[{request.app_name}]未配置角色"
+        logger.info(f"授权失败: {deny_msg}")
+        deny_count2 +=1  # 直接使用，无需重复写global
+        return AuthResponse(result="deny", message=deny_msg)
+    
+    # 2. 校验角色不存在于 role-perm-config 的key中 → 无任何权限，直接拒绝
+    role_perm_config = get_configmap(ROLE_PERM_CM)
+    if role not in role_perm_config:
+        deny_msg = f"角色[{role}]不存在于权限配置role-perm-config中，无任何操作权限"
+        logger.info(f"授权失败: {deny_msg}")
+        deny_count2 +=1  # 直接使用
+        return AuthResponse(result="deny", message=deny_msg)
+    
+    # 3. 角色→权限解析（ConfigMap: role-perm-config，key=角色名，value=JSON{"数据类型": ["操作列表"]}）
     role_perm = parse_json_config(ROLE_PERM_CM, role)
     allowed_ops = role_perm.get(request.data_type, [])
+    logger.info(f"角色[{role}]拥有的{request.data_type}类型权限: {allowed_ops}")
     
-    # 3. 权限校验
+    # 4. 权限校验
     if request.operation_type in allowed_ops:
+        allow_msg = f"授权通过：应用[{request.app_name}]（角色[{role}]）拥有{request.data_type}:{request.operation_type}权限"
+        logger.info(f"授权成功: {allow_msg}")
         return AuthResponse(
             result="allow",
-            message=f"授权通过：应用[{request.app_name}]（角色[{role}]）拥有{request.data_type}:{request.operation_type}权限"
+            message=allow_msg
         )
     else:
+        deny_msg = f"授权拒绝：应用[{request.app_name}]缺少{request.data_type}:{request.operation_type}权限"
+        logger.info(f"授权失败: {deny_msg}")
+        deny_count2 +=1  # 直接使用
         return AuthResponse(
             result="deny",
-            message=f"授权拒绝：应用[{request.app_name}]缺少{request.data_type}:{request.operation_type}权限"
+            message=deny_msg
         )
+
+# ====================== 【新增】外部 ABAC 接口调用工具函数 ======================
+# ====================== 【最终版】ABAC 接口调用 ======================
+async def call_abac_api(result: bool, user_id: str):
+    """
+    调用外部ABAC接口
+    :param result: 授权结果 True/False
+    :param user_id: 从JWT获取的真实用户ID
+    """
+    url = "http://192.168.193.12:30050/abac"
+    result_str = "True" if result else "False"
+
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                url,
+                params={
+                    "result": result_str,
+                    "user_id": user_id  # 真实用户ID
+                },
+                timeout=2.0
+            )
+        logger.info(f"✅ ABAC API 调用成功：result={result_str}, user_id={user_id}")
+    except Exception as e:
+        logger.warning(f"⚠️ ABAC API 调用失败（不影响主流程）：{e}")
+
+
+
+# 全局缓存：存储 token -> { "time": 时间, "valid": 上次结果 }
+_REQUEST_CACHE: Dict[str, dict] = {}
+CACHE_WINDOW = 10  # 秒
 
 @app.post(
     "/auth/trust-sensitivity", 
-    response_model=TrustSensitivityAuthResponse,  # 改用新响应模型
+    response_model=TrustSensitivityAuthResponse,
     summary="信任度-敏感度授权"
 )
 async def trust_sensitivity_auth(request: NewTrustSensitivityAuthRequest):
-    """逻辑：验证JWT令牌→提取department和type→拆分类型→合并生成内容→多轮调用敏感度模型→取最高分→调用匹配模型→返回结果
-    核心修改：
-    1. 响应改为 valid: true/false，所有异常场景均返回 valid: false
-    2. 取消HTTP异常抛出，统一返回200状态码+valid字段标识结果
-    3. 新增读取addvalue配置并调整敏感度分数：max{1, 原分数 - addvalue}
-    """
+    # ====================== 核心防重复执行（10秒内同一个token只跑一次） ======================
+    token = request.token
+    now = time.time()
+
+    # 10秒内重复直接返回，不执行任何业务、不调用ABAC
+    if token in _REQUEST_CACHE:
+        cache_data = _REQUEST_CACHE[token]
+        # 10秒内重复：直接返回上次真实结果
+        if now - cache_data["time"] < CACHE_WINDOW:
+            last_valid = cache_data["valid"]
+            logger.info(f"✅ 重复请求已拦截，返回上次授权结果：valid={last_valid}，token={token[:20]}...")
+            return TrustSensitivityAuthResponse(
+                valid=last_valid,  # 关键：返回上次真实结果，不写死 True
+                message="重复请求已过滤，返回上次授权结果"
+            )
+
+    # ====================== 防重结束 ======================
+
     async with httpx.AsyncClient() as client:
-        # ------------------------------
-        # 步骤1：验证JWT令牌有效性并提取关键信息
-        # ------------------------------
         logger.info(f"开始处理信任度-敏感度授权请求，使用保存的信任度：{saved_trust_score}")
         try:
-            # 调用外部JWT验证服务
             jwt_resp = await client.post(
                 JWT_VERIFY_URL,
-                json={"token": request.token},  # 按JWT服务要求的格式传参
+                json={"token": request.token},
                 timeout=TIMEOUT
             )
-            jwt_resp.raise_for_status()  # 抛出HTTP错误（如404、500）
+            jwt_resp.raise_for_status()
             jwt_data = jwt_resp.json()
             logger.info(f"JWT验证服务返回结果：{jwt_data}")
         except httpx.RequestError as e:
-            # 场景1：JWT验证服务调用失败（超时/不可达）→ 返回valid: false
             logger.error(f"调用JWT验证服务失败：{e}")
+            global deny_count
+            deny_count +=1
+            #await call_abac_api(False, "unknown_user")
             return TrustSensitivityAuthResponse(
                 valid=False,
                 message="JWT验证服务不可用，请稍后重试"
             )
         
-        # 场景2：令牌无效（valid=false）→ 返回valid: false
         if not jwt_data.get("valid", False):
             error_msg = jwt_data.get("error", "未知错误")
             logger.warning(f"JWT令牌无效：{error_msg}，令牌：{request.token[:20]}...")
+            deny_count +=1
+            #await call_abac_api(False, "unknown_user")
             return TrustSensitivityAuthResponse(
                 valid=False,
                 message=f"令牌无效：{error_msg}（请重新获取令牌）"
             )
         
-        # 提取payload中的department和type字段
         payload = jwt_data.get("payload", {})
         department = payload.get("department")
-        # 场景3：缺少有效department字段→ 返回valid: false
+        user_id = payload.get("user_id")
         if not department or not isinstance(department, str):
             logger.warning(f"JWT令牌payload中缺少有效department字段，payload：{payload}")
+            deny_count +=1
+            #await call_abac_api(False, user_id)
             return TrustSensitivityAuthResponse(
                 valid=False,
                 message="令牌中未包含有效部门信息（department字段缺失或格式错误）"
             )
         
-        type_val = payload.get("data_types")  # 变量名修改为type_val，避免与关键字冲突
-        # 场景4：缺少有效type字段→ 返回valid: false
+        type_val = payload.get("data_types")
         if not type_val or not isinstance(type_val, str):
             logger.warning(f"JWT令牌payload中缺少有效type字段，payload：{payload}")
+            deny_count +=1
+            #await call_abac_api(False, user_id)
             return TrustSensitivityAuthResponse(
                 valid=False,
                 message="令牌中未包含有效类型信息（type字段缺失或格式错误）"
@@ -322,137 +406,157 @@ async def trust_sensitivity_auth(request: NewTrustSensitivityAuthRequest):
         
         logger.info(f"JWT验证通过，提取部门信息：{department}，原始类型信息：{type_val}")
 
-        # ------------------------------
-        # 步骤2：拆分类型、过滤无效值、合并生成数据内容
-        # ------------------------------
-        # 按空格拆分类型，去重并过滤空字符串
-        raw_type_list = list(set(type_val.split()))  # 去重
-        raw_type_list = [t.strip() for t in raw_type_list if t.strip()]  # 过滤空字符串
-        
-        # 场景5：拆分后无有效类型→ 返回valid: false
+        raw_type_list = list(set(type_val.split()))
+        raw_type_list = [t.strip() for t in raw_type_list if t.strip()]
+
         if not raw_type_list:
             logger.warning(f"拆分后的类型列表为空，原始type值：{type_val}")
+            deny_count += 1
+            #await call_abac_api(False, user_id)
             return TrustSensitivityAuthResponse(
                 valid=False,
                 message="令牌中type字段格式错误，未提取到有效数据类型"
             )
-        
-        # 过滤不允许的类型
-        valid_type_list = [t for t in raw_type_list if t in ALLOWED_RAW_TYPES]
-        invalid_type_list = [t for t in raw_type_list if t not in ALLOWED_RAW_TYPES]
-        
-        if invalid_type_list:
-            logger.warning(f"存在不支持的原始类型，已忽略：{invalid_type_list}，支持的类型：{list(ALLOWED_RAW_TYPES)}")
-        
-        # 场景6：无有效支持的类型→ 返回valid: false
-        if not valid_type_list:
-            logger.warning(f"无有效数据类型，原始类型列表：{raw_type_list}，支持的类型：{list(ALLOWED_RAW_TYPES)}")
-            return TrustSensitivityAuthResponse(
-                valid=False,
-                message=f"无支持的数据类型，支持的类型：{list(ALLOWED_RAW_TYPES)}"
-            )
-        
-        # 生成数据内容列表和对应的data_type
-        data_content_list = []
-        data_meta_list = []
-        for raw_type in valid_type_list:
-            data_content = f"{department}{raw_type}"  # 合并：部门+原始类型
-            data_type = CONTENT_TYPE_MAP[raw_type]    # 动态获取数据格式
-            data_content_list.append(data_content)
-            data_meta_list.append({
-                "content": data_content,
-                "data_type": data_type
-            })
-        
-        logger.info(f"生成有效数据内容列表：{data_content_list}，对应的data_type：{[meta['data_type'] for meta in data_meta_list]}")
 
-        # ------------------------------
-        # 步骤3：多轮调用敏感度模型，收集分数并取最高分
-        # ------------------------------
+        data_content_list = []
+        for raw_type in raw_type_list:
+            data_content = f"{department}{raw_type}"
+            data_content_list.append(data_content)
+
+        logger.info(f"生成有效数据内容列表：{data_content_list}")
+
+        sensitivity_standard = """
+        个人医疗数据敏感度分级标准（1-5级）：
+        1级（公开级）：可公开传播的医疗相关信息或与个人医疗、健康完全无关的内容，无个人隐私关联，无泄露风险，如通用健康科普文章、公开的疾病预防指南、非个人化的医疗常识。
+        2级（低敏级）：仅包含个人基础生理指标，单独呈现无隐私风险，泄露后影响极小，如个人血压、体温、心率、身高、体重、日常血糖监测值（未关联确诊疾病）、睡眠时长等。
+        3级（中敏级）：常规医疗检查报告或非敏感疾病的诊断记录，涉及个人健康隐私，泄露后造成一定困扰，如普通体检报告（无重大异常）、胃镜/肠镜检查报告、膝盖/胸部X光片报告、血常规/尿常规结果、轻微感冒/肠胃炎的门诊病历。
+        4级（高敏级）：慢性疾病或较严重疾病的诊断/治疗数据，泄露后可能影响个人工作、社交或保险权益，如糖尿病/高血压/冠心病的确诊记录及用药方案、甲状腺结节/子宫肌瘤等良性肿瘤的诊断报告、慢性支气管炎的长期治疗病历。
+        5级（极高敏级）：重大疾病、心理疾病或涉及隐私性极强的医疗数据，泄露后造成严重心理伤害、社会歧视或重大权益损失，如癌症（肺癌/胃癌等）的病理诊断报告及化疗方案、抑郁症/精神分裂症等心理疾病的诊断记录与治疗档案、艾滋病/梅毒等传染病确诊报告、生殖系统疾病的详细诊疗数据。
+        """
+
         sensitivity_scores = []
-        for idx, data_meta in enumerate(data_meta_list):
-            content = data_meta["content"]
-            data_type = data_meta["data_type"]
-            logger.info(f"第{idx+1}/{len(data_meta_list)}次调用敏感度模型，输入：{data_meta}")
-            
+
+        for idx, content in enumerate(data_content_list):
+            logger.info(f"第{idx + 1}/{len(data_content_list)}次调用本地大模型进行敏感度评估，输入内容：{content}")
+
+            user_prompt = f"""
+        {sensitivity_standard}
+
+        请问“{content}”属于哪一级？请只回答等级数字。
+        """
+
+            local_llm_payload = {
+                "model": LOCAL_LLM_MODEL,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "你是一个医疗数据敏感度分级专家系统。"
+                            "请严格根据用户给出的分级标准评估用户输入内容的隐私敏感度。"
+                            "只输出1到5之间的一个数字，不要输出解释。"
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": user_prompt
+                    }
+                ],
+                "temperature": 0.1,
+                "max_tokens": 16
+            }
+
             try:
                 sens_resp = await client.post(
-                    SENSITIVITY_MODEL_URL,
-                    json=data_meta,
-                    timeout=TIMEOUT
+                    LOCAL_LLM_CHAT_URL,
+                    headers={"Content-Type": "application/json"},
+                    json=local_llm_payload,
+                    timeout=60.0
                 )
+
                 sens_resp.raise_for_status()
                 sens_data = sens_resp.json()
-                score = sens_data.get("final_sensitivity_score")
-                
-                if score is None or not isinstance(score, (int, float)):
-                    logger.warning(f"第{idx+1}次调用敏感度模型未返回有效分数，响应：{sens_data}")
+
+                model_answer = (
+                    sens_data
+                    .get("choices", [{}])[0]
+                    .get("message", {})
+                    .get("content", "")
+                    .strip()
+                )
+
+                logger.info(f"第{idx + 1}次本地大模型原始回答：{model_answer}")
+
+                score = parse_sensitivity_level(model_answer)
+
+                if score is None:
+                    logger.warning(f"第{idx + 1}次本地大模型未返回有效1-5等级，内容：{content}")
                     continue
-                
-                score = float(score)
+
                 sensitivity_scores.append(score)
-                logger.info(f"第{idx+1}次调用成功，内容：{content}，分数：{score}")
-            except httpx.RequestError as e:
-                logger.error(f"第{idx+1}次调用敏感度模型失败（内容：{content}）：{e}")
-                # 单个调用失败不中断，继续处理其他内容
+                logger.info(f"第{idx + 1}次调用成功，内容：{content}，敏感度等级：{score}")
+
+            except Exception as e:
+                logger.error(f"敏感度模型调用异常：{e}")
                 continue
-        
-        # 场景7：所有敏感度模型调用均未返回有效分数→ 返回valid: false
+
         if not sensitivity_scores:
-            logger.error(f"所有敏感度模型调用均未返回有效分数，数据内容列表：{data_content_list}")
+            logger.error(f"所有敏感度评估均失败，内容：{data_content_list}")
+            deny_count += 1
+            #await call_abac_api(False, user_id)
             return TrustSensitivityAuthResponse(
                 valid=False,
                 message="敏感度模型调用失败，未获取到有效分数"
             )
-        
-        # 取最高分作为最终敏感度分数
-        sensitivity_score = max(sensitivity_scores)
-        logger.info(f"所有有效分数：{sensitivity_scores}，最终取最高分：{sensitivity_score}")
 
-        # ------------------------------
-        # 步骤4前置：读取addvalue配置并计算新的敏感度分数
-        # ------------------------------
+        sensitivity_score = max(sensitivity_scores)
+        logger.info(f"最终敏感度等级：{sensitivity_score}")
+
         try:
-            # 读取存储addvalue的ConfigMap
             add_value_data = get_configmap(ADD_VALUE_CM)
-            addvalue = float(add_value_data.get("addvalue", 0))  # 默认值2
-            logger.info(f"从ConfigMap[{ADD_VALUE_CM}]读取到addvalue：{addvalue}")
+            addvalue = float(add_value_data.get("addvalue", 0))
+            logger.info(f"读取到 addvalue：{addvalue}")
         except Exception as e:
-            # 读取失败时使用默认值2（兼容ConfigMap不存在/读取异常等场景）
-            logger.warning(f"读取addvalue ConfigMap[{ADD_VALUE_CM}]失败，使用默认值2，错误：{e}")
+            logger.warning(f"读取addvalue失败，使用默认值0：{e}")
             addvalue = 0
         
-        # 计算新的敏感度分数：max{1, 原分数 - addvalue}
-        
-        new_saved_trust_score = min(1.0, saved_trust_score + addvalue)
-        logger.info(f"调整后的信任度分数：{new_saved_trust_score}（原分数：{saved_trust_score}，addvalue：{addvalue}）")
+        new_saved_trust_score = round(min(1.0, saved_trust_score + addvalue), 3)
+        logger.info(f"调整后信任度：{new_saved_trust_score}")
 
-        # ------------------------------
-        # 步骤4：调用信任度-敏感度匹配模型（使用保存的信任度和调整后的敏感度分数）
-        # ------------------------------
         try:
             match_resp = await client.post(
                 MATCH_MODEL_URL,
                 params={
-                    "trust_score": new_saved_trust_score,  # 改用服务内保存的信任度
-                    "sensitivity_level": sensitivity_score  # 使用调整后的分数
+                    "trust_score": new_saved_trust_score,
+                    "sensitivity_level": sensitivity_score
                 },
                 timeout=TIMEOUT
             )
             match_resp.raise_for_status()
             match_data = match_resp.json()
             allowed = match_data.get("allowed", False)
-            logger.info(f"匹配模型返回授权结果：{'允许' if allowed else '拒绝'}")
+            logger.info(f"匹配模型授权结果：{allowed}")
         except httpx.RequestError as e:
-            # 场景8：匹配模型调用失败→ 返回valid: false
             logger.error(f"匹配模型调用失败：{e}")
+            deny_count +=1
+            #await call_abac_api(False, user_id)
             return TrustSensitivityAuthResponse(
                 valid=False,
                 message="信任度-敏感度匹配模型不可用"
             )
     
-    # 正常流程：映射结果为valid（allow→true，deny→false）
+    # 最终结果
     valid = True if allowed else False
+    if not valid:
+        deny_count +=1
+
+    # ========== 最终只调用一次 ABAC ==========
+    #await call_abac_api(valid, user_id)
+    # ====================== 修复：缓存本次时间 + 授权结果 ======================
+    _REQUEST_CACHE[token] = {
+        "time": now,
+        "valid": valid
+    }
+
     message = (
         f"授权结果：{'通过' if valid else '拒绝'} | 保存的信任度：{saved_trust_score:.3f} | "
         f"有效数据内容：{data_content_list} | 各内容敏感度分数：{sensitivity_scores} | "
@@ -538,6 +642,10 @@ async def user_trust_evaluate(request: UserTrustRequest):
     # 2. 补充location（不变）
     ip_location_data = get_configmap(IP_LOCATION_CM)
     location = ip_location_data.get(request.ipaddress, "others")
+    if location == "others":
+        logger.info(f"IP[{request.ipaddress}]→地理位置[非常用IP]")
+    else:
+        logger.info(f"IP[{request.ipaddress}]→地理位置[{location} 常用IP]")
     
     # 3. IP→连接方式→access_network_score（不变）
     ip_conn_data = get_configmap(IP_CONNECTION_TYPE_CM)
@@ -665,14 +773,17 @@ async def user_trust_evaluate(request: UserTrustRequest):
         f"生物衰减因子={decay_factor_bio:.4f}，衰减后bio={decay_bio:.4f}"
     )
     
-    
+    real_hour = (request.time + 8) % 24
+    logger.info(
+        f"时间={real_hour}"
+    )
     # ------------------------------
     # 调用模型（使用衰减后的pswd和bio）
     # ------------------------------
     model_request = {
         "subject_type": "user",
         "common_device": common_device,
-        "time": request.time,
+        "time": real_hour,
         "location": location,
         "bio": decay_bio,  # 使用衰减后的bio
         "pswd": decay_pswd,  # 使用衰减后的pswd
@@ -716,7 +827,7 @@ async def user_trust_evaluate(request: UserTrustRequest):
                 f"信任度评估成功：模型返回值={original_trust_score:.3f} + 加分值={trust_score_add_value:.3f} = 最终值={final_trust_score:.3f}，"
                 f"已更新保存的信任度为：{saved_trust_score:.3f}"
             )
-            
+            final_trust_score = float(f"{final_trust_score:.2f}")
             return TrustScoreResponse(
                 trust_score=final_trust_score,  # 返回加完分后的信任度
                 status=result["status"],
@@ -739,7 +850,9 @@ async def mac_imsi_auth(request: MacImsiAuthRequest):
     逻辑：校验MAC地址是否在MAC白名单ConfigMap中，且IMSI号码是否在IMSI白名单ConfigMap中
     仅当两者均存在时，返回授权通过；任一不存在或配置读取失败，返回授权拒绝
     """
-    logger.info(f"开始处理MAC/IMSI授权请求：MAC={request.mac}，IMSI={request.imsi}")
+    # 新增：声明全局拒绝计数变量
+    global deny_count
+    logger.info(f"开始处理IMSI授权请求：IMSI={request.imsi}") #MAC/    MAC={request.mac}，
     
     # 步骤1：统一MAC地址格式（转大写，避免大小写匹配问题）
     target_mac = request.mac.upper()
@@ -751,6 +864,8 @@ async def mac_imsi_auth(request: MacImsiAuthRequest):
         imsi_whitelist = get_whitelist_from_cm(IMSI_WHITELIST_CM)
     except HTTPException as e:
         logger.error(f"读取白名单ConfigMap失败：{e.detail}")
+        # # 新增：配置读取失败 → 拒绝计数+1
+        # deny_count += 1
         return AuthResponse(
             result="deny",
             message=f"授权失败：配置读取异常（{e.detail}）"
@@ -762,23 +877,37 @@ async def mac_imsi_auth(request: MacImsiAuthRequest):
     
     # 步骤4：构建返回结果
     if mac_is_valid and imsi_is_valid:
-        logger.info(f"授权通过：MAC={target_mac}、IMSI={target_imsi}均在白名单中")
+        logger.info(f"授权通过：IMSI={target_imsi}在白名单中") #MAC={target_mac}、
         return AuthResponse(
             result="allow",
-            message=f"授权通过：MAC={target_mac}、IMSI={target_imsi}均为合法资源"
+            message=f"授权通过：IMSI={target_imsi}为合法资源" #MAC={target_mac}、
         )
     else:
         error_details = []
-        if not mac_is_valid:
-            error_details.append(f"MAC={target_mac}不在白名单中")
+        # if not mac_is_valid:
+        #     error_details.append(f"MAC={target_mac}不在白名单中")
         if not imsi_is_valid:
             error_details.append(f"IMSI={target_imsi}不在白名单中")
         error_msg = "授权拒绝：" + "；".join(error_details)
         logger.warning(error_msg)
+        # # 新增：校验不通过 → 拒绝计数+1
+        # deny_count += 1
         return AuthResponse(
             result="deny",
             message=error_msg
         )
+
+# ====================== 仅新增：获取授权拒绝次数接口 ======================
+@app.get("/auth/abac", summary="获取授权拒绝总次数")
+async def get_deny_count():
+    return {"deny_totalabac_count": deny_count}
+# ====================================================================
+
+# ====================== 仅新增：获取授权拒绝次数接口 ======================
+@app.get("/auth/rbac", summary="获取授权拒绝总次数")
+async def get_deny_count2():
+    return {"deny_totalrbac_count": deny_count2}
+# ====================================================================
 
 # 健康检查接口（K8s探针使用）
 @app.get("/health", summary="健康检查")

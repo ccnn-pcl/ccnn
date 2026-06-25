@@ -1,0 +1,9 @@
+FROM python:3.12-slim
+
+# 只统一预装公共系统依赖，不再创建任何用户、用户组
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app

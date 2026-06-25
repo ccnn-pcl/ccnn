@@ -1,5 +1,5 @@
 # 基础镜像（Python 3.12 精简版）
-FROM python:3.12-slim
+FROM py312-base:3.12-slim
 
 # 设置工作目录
 WORKDIR /app
@@ -19,6 +19,9 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# ========== 采用你说的标准容器安全创建用户方式 ==========
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
 # 复制依赖文件并安装 Python 包
 COPY requirements.txt .
 # 使用国内pip镜像源安装Python依赖
@@ -29,6 +32,12 @@ RUN pip install --no-cache-dir --upgrade pip -i https://mirrors.aliyun.com/pypi/
 # 复制模型文件夹和 API 代码
 COPY models/ ./models/
 COPY main.py .
+
+# 关键：把工作目录归属改成 appuser，否则切换用户后读文件权限拒绝
+RUN chown -R appuser:appuser /app
+
+# 切换非root运行
+USER appuser
 
 # 暴露端口
 EXPOSE 8000

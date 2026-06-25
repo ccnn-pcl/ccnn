@@ -7,8 +7,8 @@ from flask import Blueprint, request, jsonify, session, redirect, url_for
 from oidc.views import sso_sessions
 from src.database import get_db_primary, get_db_read_with_fallback
 from src.models import User, find_user_by_face_optimized
-from src.utils import base64_to_image, extract_face_encoding, compare_faces, resolve_client_ip, call_trust_service, reverse_geocode_city
-from src.events import publish_event, build_device_str, build_location_str, EVENT_LOGIN_SUCCESS, EVENT_LOGIN_FAILURE, EVENT_LOGOUT, EVENT_REGISTER_SUCCESS, EVENT_REGISTER_FAILURE, last_login_location
+from src.utils import base64_to_image, extract_face_encoding, compare_faces, resolve_client_ip, call_trust_service
+from src.events import publish_event, build_device_str, resolve_location, EVENT_LOGIN_SUCCESS, EVENT_LOGIN_FAILURE, EVENT_LOGOUT, EVENT_REGISTER_SUCCESS, EVENT_REGISTER_FAILURE, last_login_location
 from config import TRUST_SERVICE_URL, OPENXG_ADDR
 import logging
 import json
@@ -31,14 +31,9 @@ def register():
         device_info = data.get('deviceInfo', {})
         location = data.get('location', {})
 
-        lat = location.get('lat')
-        lng = location.get('lng')
-        city = location.get('city', '')
-        if not city and lat is not None and lng is not None:
-            city = reverse_geocode_city(lat, lng)
+        city, lat, lng, location_str = resolve_location(location, ipv4, log_prefix="register: ")
 
         device_str = build_device_str(device_info)
-        location_str = build_location_str(city, lat, lng)
 
         if not all([username, password, image_data, email]):
             publish_event(EVENT_REGISTER_FAILURE, 0, device_str, ipv4, location_str,
@@ -130,31 +125,7 @@ def login():
     session.permanent = True
 
     if 'auth_params' in session:
-        def send_background_requests():
-            try:
-                requests_data = [
-                    {"mac": "70:C9:4E:E2:FF:1B", "imsi": "466920000000001", "limit": 1000},
-                    {"mac": "48:7E:25:07:12:EA", "imsi": "466920000000002", "limit": 1000},
-                    {"mac": "94:B6:09:21:49:9A", "imsi": "466920000000003", "limit": 1000}
-                ]
-                for data in requests_data:
-                    try:
-                        response = requests.post(
-                            OPENXG_ADDR,
-                            headers={'Content-Type': 'application/json'},
-                            data=json.dumps(data),
-                            timeout=5
-                        )
-                        logger.info(f"后台请求发送成功: {data['mac']}, 状态码: {response.status_code}")
-                    except Exception as e:
-                        logger.error(f"后台请求发送失败 {data['mac']}: {str(e)}")
-            except Exception as e:
-                logger.error(f"后台任务异常: {str(e)}")
-
-        thread = threading.Thread(target=send_background_requests)
-        thread.daemon = True
-        thread.start()
-
+        
         logger.info("auth_params: %s", session.get('auth_params'))
         auth_params = session.pop('auth_params')
         return redirect(url_for('oidc.authorize', **auth_params))
@@ -175,21 +146,10 @@ def login_with_face():
         message_content = data.get('messageContent', {})
 
         # 提取并转换前端传来的位置信息（优先前端传入的城市名）
-        lat = location.get('lat')
-        lng = location.get('lng')
-        city = location.get('city', '')
-        if not city and lat is not None and lng is not None:
-            logger.info(f"登录请求: 前端未传city，离线转换 lat={lat}, lng={lng}")
-            city = reverse_geocode_city(lat, lng)
-            logger.info(f"登录请求: 离线转换城市={city or '未知'}")
-        elif city:
-            logger.info(f"登录请求: 前端传入 city={city}")
-        else:
-            logger.info("登录请求: 未收到城市信息")
+        city, lat, lng, location_str = resolve_location(location, ipv4, log_prefix="登录请求: ")
 
         # 构建事件字段
         device_str = build_device_str(device_info)
-        location_str = build_location_str(city, lat, lng)
 
         logger.info(f"登录请求: 用户名={username}")
         logger.info(f"登录请求: 设备信息={device_info}")
@@ -278,18 +238,9 @@ def logout():
         location = data.get('location', {})
         message_content = data.get('messageContent', {})
 
-        lat = location.get('lat')
-        lng = location.get('lng')
-        city = location.get('city', '')
-        if not city and lat is not None and lng is not None:
-            logger.info(f"logout: 前端未传city，离线转换 lat={lat}, lng={lng}")
-            city = reverse_geocode_city(lat, lng)
-            logger.info(f"logout: 离线转换城市={city or '未知'}")
-        elif city:
-            logger.info(f"logout: 前端传入 city={city}")
+        city, lat, lng, location_str = resolve_location(location, ipv4, log_prefix="logout: ")
 
         device_str = build_device_str(device_info)
-        location_str = build_location_str(city, lat, lng)
 
         logger.info(f"用户退出: user_id={user_id}, ip={ipv4}, location={location_str}")
         logger.info("准备推送退出事件到 Kafka, event_id=%d", EVENT_LOGOUT)
@@ -312,25 +263,7 @@ def keep_auth():
         device_info = data.get('deviceInfo', {})
         location = data.get('location', {})
 
-        lat = location.get('lat')
-        lng = location.get('lng')
-        city = location.get('city', '')
-        if not city and lat is not None and lng is not None:
-            logger.info(f"keep-auth: 前端未传city，离线转换 lat={lat}, lng={lng}")
-            city = reverse_geocode_city(lat, lng)
-            logger.info(f"keep-auth: 离线转换城市={city or '未知'}")
-        elif city:
-            logger.info(f"keep-auth: 前端传入 city={city}")
-        else:
-            # 前端没传位置，尝试复用登录时的位置信息
-            cached = last_login_location.get(ipv4)
-            if cached:
-                city = cached.get("city", "")
-                lat = cached.get("lat")
-                lng = cached.get("lng")
-                logger.info(f"keep-auth: 复用登录位置 city={city}, lat={lat}, lng={lng}")
-            else:
-                logger.info("keep-auth: 未收到城市信息，无缓存可用")
+        city, lat, lng, _ = resolve_location(location, ipv4, use_cache=True, log_prefix="keep-auth: ")
 
         trust = call_trust_service(ipv4, device_info, 0.0, 0.0, city)
         logger.info(f"keep-auth: trust={trust}, city={city or '默认深圳'}")

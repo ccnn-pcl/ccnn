@@ -106,6 +106,38 @@ def publish_event(
 
 # ---------- 工具函数 ----------
 
+def resolve_location(location: dict, ipv4: str = "", use_cache: bool = False, log_prefix: str = "") -> tuple:
+    """
+    统一的城市信息解析，返回 (city, lat, lng, location_str)
+    优先级：前端 city > KDTree 离线编码 > 登录缓存（仅 use_cache=True）
+    """
+    lat = location.get('lat')
+    lng = location.get('lng')
+    city = location.get('city', '')
+
+    if not city and lat is not None and lng is not None:
+        logger.info("%s前端未传city，离线转换 lat=%s, lng=%s", log_prefix, lat, lng)
+        from src.utils import reverse_geocode_city
+        city = reverse_geocode_city(lat, lng)
+        logger.info("%s离线转换城市=%s", log_prefix, city or '未知')
+    elif city:
+        logger.info("%s前端传入 city=%s", log_prefix, city)
+    elif use_cache and ipv4:
+        cached = last_login_location.get(ipv4)
+        if cached:
+            city = cached.get("city", "")
+            lat = cached.get("lat")
+            lng = cached.get("lng")
+            logger.info("%s复用登录位置 city=%s, lat=%s, lng=%s", log_prefix, city, lat, lng)
+        else:
+            logger.info("%s未收到城市信息，无缓存可用", log_prefix)
+    else:
+        logger.info("%s未收到城市信息", log_prefix)
+
+    location_str = build_location_str(city, lat, lng)
+    return city, lat, lng, location_str
+
+
 def build_device_str(device_info: dict) -> str:
     """根据 deviceInfo 构建设备描述字符串"""
     if not device_info:

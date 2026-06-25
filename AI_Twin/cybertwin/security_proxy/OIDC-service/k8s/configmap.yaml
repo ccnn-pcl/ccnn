@@ -35,8 +35,8 @@ data:
   SESSION_COOKIE_SECURE: "True"
 
   # ========== Kafka ==========
-  KAFKA_BROKER: 192.168.193.82:31493
-  KAFKA_TOPIC: _cybertwin_event_
-  KAFKA_GROUP_ID: cybertwin_event_sr_group
-  KAFKA_USERNAME: admin
-  KAFKA_PASSWORD: pcnl@2026
+  KAFKA_BROKER: 
+  KAFKA_TOPIC: 
+  KAFKA_GROUP_ID: 
+  KAFKA_USERNAME: 
+  KAFKA_PASSWORD: 

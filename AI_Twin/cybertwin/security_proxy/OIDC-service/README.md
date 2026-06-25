@@ -57,15 +57,15 @@ MYSQL_DB2_URL=mysql+pymysql://user:password@host2:3306/CCNN_db2?charset=utf8mb4
 # 信任评分服务
 TRUST_SERVICE_URL=http://CCNN-trust-service/evaluate/user-trust
 
-# 外部登录页面 URL
+# 登录页面 URL
 LOGIN_PAGE_URL=http://CCNN-frontend/login
 
 # Kafka 事件推送
-KAFKA_BROKER=192.168.193.82:31493
-KAFKA_TOPIC=_cybertwin_event_
-KAFKA_GROUP_ID=cybertwin_event_sr_group
-KAFKA_USERNAME=admin
-KAFKA_PASSWORD=pcnl@2026
+KAFKA_BROKER=
+KAFKA_TOPIC=
+KAFKA_GROUP_ID=
+KAFKA_USERNAME=
+KAFKA_PASSWORD=
 ```
 
 ### 启动服务
@@ -101,7 +101,7 @@ cybertwin-OIDC-service/
 │   ├── database.py         # 数据库引擎（主备故障转移）
 │   ├── models.py           # User 模型（密码哈希/人脸编码/ID 生成）
 │   ├── utils.py            # 图像处理/IP 解析/信任评分调用/离线逆地理编码
-│   ├── events.py           # Kafka 事件发布（注册/登录/退出）
+│   ├── events.py           # Kafka 事件发布 + 城市信息解析
 │   └── china_cities.py     # 中国地级市坐标 KDTree（离线经纬度→城市）
 │
 └── k8s/                    # Kubernetes 部署配置

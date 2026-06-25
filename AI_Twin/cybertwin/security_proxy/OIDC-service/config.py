@@ -46,13 +46,13 @@ SECONDARY_DB_URI  = os.getenv("MYSQL_DB2_URL", "")
 
 # Kafka 事件推送配置
 KAFKA_CONFIG = {
-    "bootstrap_servers": os.getenv("KAFKA_BROKER", "192.168.193.82:31493"),
-    "topic": os.getenv("KAFKA_TOPIC", "_cybertwin_event_"),
-    "group_id": os.getenv("KAFKA_GROUP_ID", "cybertwin_event_sr_group"),
+    "bootstrap_servers": os.getenv("KAFKA_BROKER", ""),
+    "topic": os.getenv("KAFKA_TOPIC", ""),
+    "group_id": os.getenv("KAFKA_GROUP_ID", ""),
     "security_protocol": "SASL_PLAINTEXT",
     "sasl_mechanism": "SCRAM-SHA-512",
-    "sasl_plain_username": os.getenv("KAFKA_USERNAME", "admin"),
-    "sasl_plain_password": os.getenv("KAFKA_PASSWORD", "pcnl@2026"), 
+    "sasl_plain_username": os.getenv("KAFKA_USERNAME", ""),
+    "sasl_plain_password": os.getenv("KAFKA_PASSWORD", ""), 
 }
 
 logger.info("配置加载完成: issuer=%s", OIDC_CONFIG.get("issuer", "N/A"))

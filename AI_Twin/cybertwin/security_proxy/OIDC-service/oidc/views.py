@@ -47,18 +47,6 @@ def load_or_create_key():
 
 private_key = load_or_create_key()
 public_key  = private_key.public_key()
-# KEY_FILE = Path("op_rsa_key.pem")
-# if KEY_FILE.exists():
-#     private_key = pickle.loads(KEY_FILE.read_bytes())
-# else:
-#     private_key = rsa.generate_private_key(
-#         public_exponent=65537,
-#         key_size=2048,
-#         backend=default_backend()
-#
-#     )
-#     KEY_FILE.write_bytes(pickle.dumps(private_key))
-# public_key = private_key.public_key()
 
 # ============== JWKS（OIDC 用） ==============
 def b64url_encode(n: int) -> str:
@@ -79,39 +67,10 @@ jwks = {
     ]
 }
 
-# OIDC配置
-# oidc_config = {
-#     "issuer": "http://localhost:5000",
-#     "authorization_endpoint": "http://localhost:5000/authorize",
-#     "token_endpoint": "http://localhost:5000/token",
-#     "userinfo_endpoint": "http://localhost:5000/userinfo",
-#     "jwks_uri": "http://localhost:5000/.well-known/jwks.json",
-#     "end_session_endpoint": "http://localhost:5000/endsession",
-#     "scopes_supported": ["openid", "profile", "email"],
-#     "response_types_supported": ["code"],
-#     "subject_types_supported": ["public"],
-#     "id_token_signing_alg_values_supported": ["RS256"]
-# }
+
 oidc_config = OIDC_CONFIG
 clients = CLIENTS
-# 注册的客户端应用
-# clients = {
-#     "user_agent": {
-#         "secret": "user_agent-secret",
-#         "redirect_uris": ["http://localhost:5001/callback"],
-#         "post_logout_redirect_uris": ["http://localhost:5001"]
-#     },
-#     "app2": {
-#         "secret": "app2-secret",
-#         "redirect_uris": ["http://localhost:5002/callback"],
-#         "post_logout_redirect_uris": ["http://localhost:5002"]
-#     },
-#     "agent_doctor": {
-#         "secret": "agent_doctor-secret",
-#         "redirect_uris": ["http://localhost:8000/oidc/callback"],
-#         "post_logout_redirect_uris": ["http://localhost:8000"]
-#     }
-# }
+
 #  discovery
 @bp.get('/.well-known/openid-configuration')
 def config():

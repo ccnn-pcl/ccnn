@@ -125,10 +125,10 @@ docker build -t face-frontend .
 | `/api/v1/chat/ws` | user-agent:5050 (WebSocket) |
 | `/api/v1/chat/send` | user-agent:5050 |
 | `/api/me` | user-agent:5050 |
-| `/api/register` | CCNN-backend:5000 |
-| `/api/login` | CCNN-backend:5000 |
-| `/api/auth/login` | CCNN-backend:5000 |
-| `/api/keep-auth` | CCNN-backend:5000 |
+| `/api/register` | cybertwin-OIDC-service:31111 |
+| `/api/login` | cybertwin-OIDC-service:31111 |
+| `/api/auth/login` | cybertwin-OIDC-service:31111 |
+| `/api/keep-auth` | cybertwin-OIDC-service:31111 |
 | `/login`, `/logout` | user-agent:5050 |
 | `/medical_frontend/` | medical-frontend:80 |
 

@@ -1,0 +1,138 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-role-config
+data:
+  medicalAI: "medical_admin"
+  labAI: "lab_viewer"
+  financeAI: "finance_editor"
+  agent_doctor1: "medical_admin"
+  user_agent: "medical_admin"
+  agent_doctor: "medical_admin"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: role-perm-config
+data:
+  medical_admin: '{"medical": ["read", "write", "update"], "text": ["read", "write"]}'
+  lab_viewer: '{"medical": ["read"], "image": ["read"]}'
+  finance_editor: '{"finance": ["read", "write"], "text": ["read", "update"]}'
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: common-device-config
+data:
+  common_devices: '["Windows10-desktop-2880×1800", "Windows10-desktop-1920×1080", "device_123", "iPhone14", "MacBookPro2023", "WindowsPC-001"]'
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ip-location-config
+data:
+  "192.168.1.100": "office"
+  "192.168.2.200": "home"
+  "203.0.113.5": "shopping-mall"
+  "10.0.0.5": "office"
+  "127.0.0.6": "office"
+  "10.236.66.114": "office"
+
+---
+# 新增：IP→连接方式映射（5G/wifi/有线）
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ip-connection-type-config
+data:
+  "192.168.1.100": "有线"
+  "192.168.2.200": "wifi"
+  "203.0.113.5": "5G"
+  "10.0.0.5": "有线"
+  "172.16.0.8": "wifi"
+  "127.0.0.6": "有线"
+  "10.236.66.114": "有线"
+---
+# 修正：城市→网络风险值映射（单Key+JSON格式，支持中文城市名）
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: city-network-risk-config
+data:
+  # Key 用英文（符合K8s规范），Value 是 JSON 字符串（包含中文城市名映射）
+  city_risk_map: >-
+    {
+      "长沙": "0.5",
+      "北京": "0.8",
+      "上海": "0.8",
+      "广州": "0.7",
+      "深圳": "1",
+      "杭州": "0.6",
+      "成都": "0.5",
+      "武汉": "0.6"
+    }
+
+---
+# 保留原IP-接入得分ConfigMap（但不再直接使用，仅为兼容）
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ip-access-score-config
+data:
+  "192.168.1.100": "0.9"
+  "192.168.2.200": "0.85"
+  "203.0.113.5": "0.6"
+  "10.0.0.5": "0.95"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: add-value-config
+data:
+  addvalue: "1"
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: decay-rate-config
+  namespace: cybertwin  # 与代码中NAMESPACE保持一致
+data:
+  # 密码衰减率（对应decayrate1），示例值20（可根据需求调整）
+  decayrate1: "10"
+  # 生物特征衰减率（对应decayrate2），示例值10（比密码衰减慢，符合需求）
+  decayrate2: "20"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trust-score-add-config
+  namespace: cybertwin
+data:
+  trust_score_add_value: "0.1"  # 可根据需要调整，比如0.05、0.2等
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: imsi-whitelist-config
+  namespace: cybertwin
+data:
+  whitelist: |-
+    466920000000001
+    466920000000002
+    466920000000003
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: mac-whitelist-config
+  namespace: cybertwin
+data:
+  whitelist: |-
+    70:C9:4E:E2:FF:1B
+    48:7E:25:07:12:EA
+    94:B6:09:21:49:9A

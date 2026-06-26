@@ -1,8 +1,8 @@
 FROM python:3.10-slim
 
-ARG BUILD_VERSION
+ARG VERSION
 ARG GIT_COMMIT
-ARG BUILD_TIME
+ARG BUILD_DATE
 
 WORKDIR /app
 
@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir --upgrade pip -i https://mirrors.aliyun.com/pypi/
 COPY ./src ./src
 COPY ./scripts ./scripts
 
-RUN python scripts/inject_version.py "${BUILD_VERSION}" "${GIT_COMMIT}" "${BUILD_TIME}"
+RUN python scripts/inject_version.py "${VERSION}" "${GIT_COMMIT}" "${BUILD_DATE}"
 
 RUN mkdir -p /app/data/BJ/BJ001 /app/data/SH/SH001 /app/data/backups
 

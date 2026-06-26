@@ -11,19 +11,17 @@ PYTHON := python3
 PIP := pip3
 VENV_DIR := .venv
 
-BUILD_VERSION ?= 0.1.0
-VERSION_MAJOR ?= 0
-VERSION_MINOR ?= 1
-VERSION_PATCH ?= 0
-BUILD_TIME := $(shell date '+%Y-%m-%d %H:%M:%S')
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
+BUILD_DATE_SHORT := $(shell date -u +'%Y%m%d')
+VERSION := $(shell git describe --tags --exact-match 2>/dev/null || echo "$(GIT_COMMIT)-$(BUILD_DATE_SHORT)")
 
 IMAGE_NAME ?= surgical-agent
-IMAGE_TAG = $(IMAGE_NAME):$(BUILD_VERSION)
+IMAGE_TAG = $(IMAGE_NAME):$(VERSION)
 PLATFORM ?= linux/amd64
 REMOTE_REPO = 192.168.64.60:31304
 REMOTE_GROUP = medical-app
-REMOTE_IMAGE = $(REMOTE_REPO)/$(REMOTE_GROUP)/$(IMAGE_NAME):$(BUILD_VERSION)
+REMOTE_IMAGE = $(REMOTE_REPO)/$(REMOTE_GROUP)/$(IMAGE_NAME):$(VERSION)
 
 SERVICE_PORT ?= 8004
 SERVICE_NAME ?= surgical
@@ -31,7 +29,7 @@ SERVICE_NAME ?= surgical
 #===============================================================
 # Phony targets definition
 #===============================================================
-.PHONY: help install dev test run clean build push version inject-version \
+.PHONY: help install dev test run clean build push version inject-version\
         lint format check-env docker-build docker-push poetry-install
 
 #===============================================================
@@ -64,7 +62,7 @@ help:
 	@echo "  Tools:"
 	@echo "  make inject-version     "
 	@echo ""
-	@echo "version: $(BUILD_VERSION) (Git commit: $(GIT_COMMIT))"
+	@echo "version: $(VERSION) (Git commit: $(GIT_COMMIT))"
 	@echo "platform: $(PLATFORM)"
 	@echo ""
 
@@ -75,18 +73,15 @@ version:
 	@echo "=================================="
 	@echo "$(PROJECT_NAME) Version Information"
 	@echo "=================================="
-	@echo "Version: $(BUILD_VERSION)"
-	@echo "Major: $(VERSION_MAJOR)"
-	@echo "Minor: $(VERSION_MINOR)"
-	@echo "Patch: $(VERSION_PATCH)"
+	@echo "Version: $(VERSION)"
 	@echo "Git commit: $(GIT_COMMIT)"
-	@echo "Build time: $(BUILD_TIME)"
+	@echo "Build date: $(BUILD_DATE)"
 	@echo ""
 
 inject-version:
 	@echo "Injecting version info into src/version.py ..."
 	@mkdir -p src
-	@python3 scripts/inject_version.py $(BUILD_VERSION) $(VERSION_MAJOR) $(VERSION_MINOR) $(VERSION_PATCH) "$(GIT_COMMIT)" "$(BUILD_TIME)"
+	@python3 scripts/inject_version.py $(VERSION) $(GIT_COMMIT) "$(BUILD_DATE)"
 	@echo "Version injection completed"
 
 #===============================================================
@@ -155,9 +150,9 @@ docker-build: check-env
 	@echo "   Platform: $(PLATFORM)"
 	docker build \
 		--platform $(PLATFORM) \
-		--build-arg BUILD_VERSION=$(BUILD_VERSION) \
+		--build-arg VERSION=$(VERSION) \
 		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
-		--build-arg BUILD_TIME="$(BUILD_TIME)" \
+		--build-arg BUILD_DATE="$(BUILD_DATE)" \
 		-t $(IMAGE_TAG) .
 	@echo "Docker image built successfully"
 

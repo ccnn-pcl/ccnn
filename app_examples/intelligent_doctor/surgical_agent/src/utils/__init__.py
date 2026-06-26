@@ -12,12 +12,4 @@
 # limitations under the License.
 
 # -*- coding: utf-8 -*-
-"""
-工具模块
-========
 
-包含数据库连接、认证等工具函数
-
-作者: QSIR
-版本: 1.0
-"""

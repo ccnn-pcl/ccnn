@@ -12,16 +12,6 @@
 # limitations under the License.
 
 # -*- coding: utf-8 -*-
-"""
-后端API主服务
-=============
-
-基于FastAPI的后端API服务，提供RESTful接口
-支持认证、聊天、医疗数据管理等功能
-
-作者: QSIR
-版本: 1.0
-"""
 
 from contextlib import asynccontextmanager
 
@@ -43,34 +33,33 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期管理"""
-    # 启动时
+    """Application lifecycle management"""
+    # Startup
     setup_logging()
     logger.info(
-        "应用启动",
+        "Application starting",
         version=get_version(),
         env="development" if settings.DEBUG else "production",
     )
     yield
-    # 关闭时
-    logger.info("应用关闭")
+    # Shutdown
+    logger.info("Application shutting down")
 
 
 class NoSlashRedirectRouter(Router):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
             path = scope["path"]
-            # 去掉路径结尾的 /（根路径 / 保留）
+            # Remove trailing slash (keep root path "/")
             if path != "/" and path.endswith("/"):
                 scope["path"] = path.rstrip("/")
         await super().__call__(scope, receive, send)
 
 
 def create_application() -> FastAPI:
-    # 创建FastAPI应用
+    # Create FastAPI application
     app = FastAPI(
         title=settings.PROJECT_NAME,
         description=settings.PROJECT_DESCRIPTION,
@@ -84,15 +73,15 @@ def create_application() -> FastAPI:
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(FlaskLikeSessionMiddleware)
 
-    # 包含API路由
-    app.include_router(auth.router, prefix="/api/v1/status", tags=["检查状态"])
-    app.include_router(diagnosis.router, prefix="/api/v1/diagnosis", tags=["诊断"])
+    # Include API routes
+    app.include_router(auth.router, prefix="/api/v1/status", tags=["Status Check"])
+    app.include_router(diagnosis.router, prefix="/api/v1/diagnosis", tags=["Diagnosis"])
 
     @app.get("/health")
     async def health_check():
-        """健康检查接口"""
+        """Health check endpoint"""
         try:
-            # 检查数据库连接
+            # Check database connection
             db = get_database()
             if db:
                 return {
@@ -108,12 +97,12 @@ def create_application() -> FastAPI:
             else:
                 return {"status": "unhealthy", "database": "disconnected"}
         except Exception as e:
-            logger.error(f"健康检查失败: {str(e)}")
+            logger.error(f"Health check failed: {str(e)}")
             return {"status": "unhealthy", "error": str(e)}
 
     @app.get("/api/v1/status")
     async def get_status():
-        """获取系统状态"""
+        """Get system status"""
         return {
             "api_version": "1.0.0",
             "services": {
@@ -131,7 +120,7 @@ def create_application() -> FastAPI:
 
     @app.get("/api/v1/version")
     async def get_version_endpoint():
-        """获取应用版本信息"""
+        """Get application version info"""
         version_info = get_version_info()
         return {
             "status": "success",

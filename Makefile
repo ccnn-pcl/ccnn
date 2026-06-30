@@ -17,11 +17,11 @@ VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo 'v0.0.0-$(
 
 # Source mirrors can be overridden from the root make command, for example:
 # make agent-docker APT_MIRROR=mirrors.aliyun.com PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
-APT_MIRROR ?= deb.debian.org
-APT_SECURITY_MIRROR ?= security.debian.org
-PIP_INDEX_URL ?= https://pypi.org/simple
-GOPROXY ?= https://proxy.golang.org,direct
-ALPINE_REPOSITORIES ?= https://dl-cdn.alpinelinux.org/alpine/v3.20/main https://dl-cdn.alpinelinux.org/alpine/v3.20/community
+APT_MIRROR ?= "deb.debian.org"
+APT_SECURITY_MIRROR ?= "security.debian.org"
+PIP_INDEX_URL ?= "https://pypi.org/simple"
+GOPROXY ?= "https://proxy.golang.org,direct"
+ALPINE_REPOSITORIES ?= "https://dl-cdn.alpinelinux.org/alpine/v3.20/main https://dl-cdn.alpinelinux.org/alpine/v3.20/community"
 
 # Copyright information
 COPYRIGHT_OWNER := $(shell git config user.name 2>/dev/null || echo 'unknown')

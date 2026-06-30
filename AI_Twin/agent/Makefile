@@ -23,12 +23,14 @@ BUILD_DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 
 # 当前版本标签 (可通过 `make build` 前设置 VERSION/BUILD 环境变量覆盖)
-#   VERSION=v0.0.0-de79104  BUILD=de79104  DATE=2026-03-02T09:16:55Z  BRANCH=master
 
 # Docker 配置
 DOCKER_IMAGE_NAME := $(PROJECT_NAME)
 DOCKERFILE := Dockerfile
 DOCKER_CONTEXT := .
+APT_MIRROR ?= deb.debian.org
+APT_SECURITY_MIRROR ?= security.debian.org
+PIP_INDEX_URL ?= https://pypi.org/simple
 
 # ============================================================================
 # 颜色定义
@@ -105,26 +107,28 @@ install: venv ## 安装依赖
 	@echo "$(GREEN)依赖安装完成$(RESET)"
 
 # ============================================================================
-# Docker 操作（简化版，只保留镜像构建）
+# Docker 操作
 # ============================================================================
 # Docker 版本信息将在构建时动态获取，避免 Makefile 解析问题
-# (因为复杂的 shell/python 表达式在赋值时容易出错)
 
 .PHONY: build
 build: ## 仅构建 Docker 镜像
 	@echo "$(CYAN)构建 Docker 镜像...$(RESET)"
 	# derive version/build from env or git dynamically and generate files in single shell
-	@version=$${VERSION:-$$(git describe --tags --always 2>/dev/null || echo "1.0.0")}; \
+	@set -e; \
+	version=$${VERSION:-$$(git describe --tags --always 2>/dev/null || echo "1.0.0")}; \
 	build=$${BUILD:-$$(git rev-parse --short HEAD 2>/dev/null || echo "dev")}; \
 	build_date=$${BUILD_DATE:-$$(date -u +"%Y-%m-%dT%H:%M:%SZ")}; \
 	git_branch=$${GIT_BRANCH:-$$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")}; \
 	git_commit=$${GIT_COMMIT:-$$(git rev-parse --short HEAD 2>/dev/null || echo "")}; \
-	# update Makefile header comment with computed values \
-	sed -i "s|^#   VERSION=.*|#   VERSION=$$version  BUILD=$$build  DATE=$$build_date  BRANCH=$$git_branch|" Makefile; \
-	echo "{\"version\": \"$$version\", \"build\": \"$$build\", \"build_date\": \"$$build_date\", \"git\": {\"commit\": \"$$git_commit\", \"branch\": \"$$git_branch\"}}" > VERSION.json; \
+	mkdir -p build; \
+	echo "{\"version\": \"$$version\", \"build\": \"$$build\", \"build_date\": \"$$build_date\", \"git\": {\"commit\": \"$$git_commit\", \"branch\": \"$$git_branch\"}}" > build/VERSION.json; \
 	echo "$(CYAN)构建版本:$(RESET) $$version-$$build"; \
 	echo "$(CYAN)构建时间:$(RESET) $$(date +'%Y-%m-%d %H:%M:%S')"; \
 	docker build \
+		--build-arg APT_MIRROR=$(APT_MIRROR) \
+		--build-arg APT_SECURITY_MIRROR=$(APT_SECURITY_MIRROR) \
+		--build-arg PIP_INDEX_URL=$(PIP_INDEX_URL) \
 		--build-arg BUILD_VERSION=$$version \
 		--build-arg BUILD_DATE=$$build_date \
 		--build-arg GIT_COMMIT=$$git_commit \
